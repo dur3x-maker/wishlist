@@ -241,7 +241,8 @@ export function connectWishlistWS(
 
   function connect() {
     if (cancelled) return;
-    const wsBase = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000";
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const wsBase = apiBase.replace(/^https:\/\//, "wss://").replace(/^http:\/\//, "ws://");
     ws = new WebSocket(`${wsBase}/ws/wishlists/${wishlistId}`);
 
     ws.onmessage = (e) => {
