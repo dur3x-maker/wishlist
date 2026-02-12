@@ -14,7 +14,7 @@ if "sslmode=" in _url:
     _ctx.verify_mode = ssl.CERT_NONE
     _connect_args["ssl"] = _ctx
 
-engine = create_async_engine(_url, echo=False, connect_args=_connect_args)
+engine = create_async_engine(_url, echo=False, pool_pre_ping=True, connect_args=_connect_args)
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 
