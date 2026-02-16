@@ -27,13 +27,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(u);
     } catch {
       setUser(null);
-      localStorage.removeItem("token");
+      if (typeof window !== "undefined") localStorage.removeItem("token");
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
     const token = localStorage.getItem("token");
     if (token) {
       fetchUser();

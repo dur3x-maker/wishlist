@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { CountdownTimer } from "@/components/ui/countdown-timer";
 import {
   Dialog,
   DialogContent,
@@ -30,7 +31,7 @@ import { formatPrice } from "@/lib/utils";
 
 export default function PublicWishlistPage() {
   const params = useParams();
-  const accessToken = params.token as string;
+  const accessToken = params?.token as string;
   const { user } = useAuth();
 
   const [wishlist, setWishlist] = useState<Wishlist | null>(null);
@@ -82,7 +83,8 @@ export default function PublicWishlistPage() {
   }
 
   const isOwner = user !== null && wishlist.owner_user_id === user.id;
-  const activeItems = wishlist.items.filter((i) => i.status === "active");
+  const isWishlistExpired = wishlist.deadline ? new Date(wishlist.deadline) < new Date() : false;
+  const visibleItems = wishlist.items.filter((i) => i.status !== "archived");
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50">
@@ -96,6 +98,11 @@ export default function PublicWishlistPage() {
           {wishlist.description && (
             <p className="mt-2 text-muted-foreground">{wishlist.description}</p>
           )}
+          {wishlist.deadline && (
+            <div className="mt-3 flex justify-center">
+              <CountdownTimer deadline={wishlist.deadline} onExpire={fetchWishlist} />
+            </div>
+          )}
           {isOwner && (
             <p className="mt-3 rounded-lg bg-amber-50 px-4 py-2 text-sm text-amber-700 inline-block">
               You are viewing your own wishlist. Reservation and contribution details are hidden from you.
@@ -105,7 +112,7 @@ export default function PublicWishlistPage() {
       </header>
 
       <main className="container mx-auto px-4 py-8">
-        {activeItems.length === 0 ? (
+        {visibleItems.length === 0 ? (
           <div className="py-20 text-center">
             <Heart className="mx-auto mb-4 h-16 w-16 text-muted-foreground/30" />
             <h2 className="text-xl font-semibold text-muted-foreground">
@@ -114,12 +121,13 @@ export default function PublicWishlistPage() {
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {activeItems.map((item) => (
+            {visibleItems.map((item) => (
               <PublicItemCard
                 key={item.id}
                 item={item}
                 accessToken={accessToken}
                 isOwner={isOwner}
+                isWishlistExpired={isWishlistExpired}
                 onUpdate={fetchWishlist}
               />
             ))}
@@ -138,11 +146,13 @@ function PublicItemCard({
   item,
   accessToken,
   isOwner,
+  isWishlistExpired,
   onUpdate,
 }: {
   item: WishlistItem;
   accessToken: string;
   isOwner: boolean;
+  isWishlistExpired: boolean;
   onUpdate: () => void;
 }) {
   const { user } = useAuth();
@@ -158,8 +168,11 @@ function PublicItemCard({
     item.price_cents && item.price_cents > 0
       ? Math.min(100, Math.round((contributed / item.price_cents) * 100))
       : 0;
-  const isFullyFunded = item.price_cents != null && item.price_cents > 0 && contributed >= item.price_cents;
+  const isFunded = item.status === "funded";
+  const isExpired = item.status === "expired";
+  const isFullyFunded = isFunded || (item.price_cents != null && item.price_cents > 0 && contributed >= item.price_cents);
   const remaining = item.price_cents != null && item.price_cents > 0 ? Math.max(0, item.price_cents - contributed) : 0;
+  const actionsDisabled = isExpired || isWishlistExpired;
 
   const handleReserve = async () => {
     const name = user ? user.display_name : guestName.trim();
@@ -170,6 +183,7 @@ function PublicItemCard({
       await api.items.reserve(accessToken, item.id, name);
       setReserveOpen(false);
       setGuestName("");
+      onUpdate();
     } catch (err: any) {
       setActionError(err.message || "Failed to reserve");
       onUpdate();
@@ -183,6 +197,7 @@ function PublicItemCard({
     setActionError("");
     try {
       await api.items.unreserve(accessToken, item.id);
+      onUpdate();
     } catch (err: any) {
       setActionError(err.message || "Failed to unreserve");
       onUpdate();
@@ -207,6 +222,7 @@ function PublicItemCard({
       setGuestName("");
       setAmount("");
       setActionError("");
+      onUpdate();
     } catch (err: any) {
       setActionError(err.message || "Failed to contribute");
       onUpdate();
@@ -216,7 +232,7 @@ function PublicItemCard({
   };
 
   return (
-    <Card className="overflow-hidden transition-shadow hover:shadow-md">
+    <Card className={`overflow-hidden transition-shadow hover:shadow-md ${isExpired ? "opacity-60" : ""}`}>
       {item.image_url && (
         <div className="relative h-48 w-full bg-muted">
           <img
@@ -228,7 +244,27 @@ function PublicItemCard({
         </div>
       )}
       <CardContent className={item.image_url ? "pt-4" : "pt-6"}>
-        <h3 className="mb-1 text-lg font-semibold">{item.title}</h3>
+        <div className="mb-1 flex items-start justify-between gap-2">
+          <h3 className="text-lg font-semibold">{item.title}</h3>
+          {isFunded && (
+            <span className="shrink-0 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+              Funded
+            </span>
+          )}
+          {isExpired && (
+            <span className="shrink-0 rounded-full bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-600">
+              Expired
+            </span>
+          )}
+        </div>
+
+        {isFunded && !isOwner && (
+          <p className="mb-2 text-xs text-green-600">Спасибо всем за участие</p>
+        )}
+        {isExpired && !isOwner && (
+          <p className="mb-2 text-xs text-gray-500">В этот раз не получилось, скоро попробуем еще раз</p>
+        )}
+
         {item.url && (
           <a
             href={item.url}
@@ -255,13 +291,18 @@ function PublicItemCard({
                 </span>
               )}
             </div>
-            {!isOwner && <Progress value={progress} />}
+            {!isOwner && (
+              <Progress
+                value={progress}
+                className={isFunded ? "[&>div]:bg-green-500" : isExpired ? "[&>div]:bg-gray-400" : ""}
+              />
+            )}
             {!isOwner && isFullyFunded && (
               <div className="mt-1 flex items-center gap-1 text-xs font-medium text-green-600 animate-fade-in">
                 <CheckCircle2 className="h-3 w-3" /> Fully funded!
               </div>
             )}
-            {!isOwner && !isFullyFunded && remaining > 0 && contributed > 0 && (
+            {!isOwner && !isFullyFunded && remaining > 0 && contributed > 0 && !isExpired && (
               <p
                 key={remaining}
                 className="mt-1 text-xs text-muted-foreground animate-fade-in"
@@ -273,7 +314,7 @@ function PublicItemCard({
         )}
 
         {/* Status badges */}
-        {!isOwner && item.reserved && (
+        {!isOwner && item.reserved && !isFunded && !isExpired && (
           <div className="mb-3 flex items-center gap-1 text-sm text-green-600">
             <CheckCircle2 className="h-4 w-4" />
             <span>
@@ -285,7 +326,7 @@ function PublicItemCard({
           </div>
         )}
 
-        {!isOwner && item.contributions.length > 0 && (
+        {!isOwner && item.contributions.length > 0 && !isExpired && (
           <div className="mb-3 space-y-1">
             {item.contributions.map((c) => (
               <div key={c.id} className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -310,10 +351,10 @@ function PublicItemCard({
         )}
 
         {/* Actions for non-owner */}
-        {!isOwner && (
+        {!isOwner && !actionsDisabled && (
           <div className="flex gap-2 pt-2">
             {isFullyFunded ? (
-              item.reserved ? (
+              item.reserved && item.reserved_by_current_user ? (
                 <Button
                   size="sm"
                   variant="ghost"
@@ -364,7 +405,7 @@ function PublicItemCard({
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
-            ) : (
+            ) : item.reserved_by_current_user ? (
               <Button
                 size="sm"
                 variant="ghost"
@@ -374,7 +415,7 @@ function PublicItemCard({
               >
                 Unreserve
               </Button>
-            )}
+            ) : null}
 
             {item.price_cents != null && item.price_cents > 0 && !isFullyFunded && (
               <Dialog open={contributeOpen} onOpenChange={(o) => { setContributeOpen(o); if (!o) setActionError(""); }}>

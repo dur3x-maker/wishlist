@@ -17,6 +17,8 @@ export interface WishlistItem {
   image_url: string | null;
   status: string;
   reserved: boolean;
+  is_reserved: boolean;
+  reserved_by_current_user: boolean;
   reserved_at: string | null;
   created_at: string;
   total_contributed: number;
@@ -44,6 +46,7 @@ export interface Wishlist {
   description: string;
   access_token: string;
   is_public: boolean;
+  deadline: string | null;
   created_at: string;
   items: WishlistItem[];
 }
@@ -54,6 +57,7 @@ export interface WishlistListItem {
   description: string;
   access_token: string;
   is_public: boolean;
+  deadline: string | null;
   created_at: string;
   item_count: number;
 }
@@ -119,6 +123,12 @@ export const api = {
         body: JSON.stringify({ email, password }),
       });
     },
+    google(code: string, redirect_uri: string) {
+      return request<{ access_token: string }>("/api/auth/google", {
+        method: "POST",
+        body: JSON.stringify({ code, redirect_uri }),
+      });
+    },
     me() {
       return request<User>("/api/auth/me");
     },
@@ -126,11 +136,14 @@ export const api = {
 
   // ── Wishlists ────────────────────────────────────────
   wishlists: {
-    create(title: string, description: string = "", is_public: boolean = true) {
+    create(title: string, description: string = "", is_public: boolean = true, deadline?: string) {
       return request<Wishlist>("/api/wishlists", {
         method: "POST",
-        body: JSON.stringify({ title, description, is_public }),
+        body: JSON.stringify({ title, description, is_public, deadline: deadline || null }),
       });
+    },
+    delete(id: string) {
+      return request<void>(`/api/wishlists/${id}`, { method: "DELETE" });
     },
     list() {
       return request<WishlistListItem[]>("/api/wishlists");
@@ -203,6 +216,17 @@ export const api = {
     unreserve(accessToken: string, itemId: string) {
       return request<WishlistItem>(
         `/api/wishlists/public/${accessToken}/items/${itemId}/unreserve`,
+        { method: "POST" }
+      );
+    },
+    delete(wishlistId: string, itemId: string) {
+      return request<void>(`/api/wishlists/${wishlistId}/items/${itemId}`, {
+        method: "DELETE",
+      });
+    },
+    move(wishlistId: string, itemId: string, newWishlistId: string) {
+      return request<WishlistItem>(
+        `/api/wishlists/${wishlistId}/items/${itemId}/move/${newWishlistId}`,
         { method: "POST" }
       );
     },

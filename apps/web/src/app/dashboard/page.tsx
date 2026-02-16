@@ -17,7 +17,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Gift, Plus, ExternalLink, Copy, LogOut, ListChecks } from "lucide-react";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Gift, Plus, ExternalLink, Copy, LogOut, ListChecks, Trash2, Clock } from "lucide-react";
 
 export default function DashboardPage() {
   const { user, loading: authLoading, logout } = useAuth();
@@ -27,7 +28,11 @@ export default function DashboardPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newDesc, setNewDesc] = useState("");
+  const [newDeadline, setNewDeadline] = useState("");
   const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState("");
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -44,25 +49,53 @@ export default function DashboardPage() {
   const handleCreate = async () => {
     if (!newTitle.trim()) return;
     setCreating(true);
+    setCreateError("");
     try {
-      const wl = await api.wishlists.create(newTitle.trim(), newDesc.trim());
+      const deadlineISO = newDeadline ? new Date(newDeadline).toISOString() : undefined;
+      const wl = await api.wishlists.create(newTitle.trim(), newDesc.trim(), true, deadlineISO);
       setWishlists((prev) => [
-        { id: wl.id, title: wl.title, description: wl.description, access_token: wl.access_token, is_public: wl.is_public, created_at: wl.created_at, item_count: 0 },
+        { id: wl.id, title: wl.title, description: wl.description, access_token: wl.access_token, is_public: wl.is_public, deadline: wl.deadline, created_at: wl.created_at, item_count: 0 },
         ...prev,
       ]);
       setNewTitle("");
       setNewDesc("");
+      setNewDeadline("");
       setCreateOpen(false);
+    } catch (err: any) {
+      setCreateError(err.message || "Failed to create wishlist");
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    setDeleting(true);
+    try {
+      await api.wishlists.delete(deleteId);
+      setWishlists((prev) => prev.filter((wl) => wl.id !== deleteId));
+      setDeleteId(null);
     } catch {
       // handle error
     } finally {
-      setCreating(false);
+      setDeleting(false);
     }
   };
 
   const copyLink = (token: string) => {
     const url = `${window.location.origin}/w/${token}`;
     navigator.clipboard.writeText(url);
+  };
+
+  // Minimum datetime for picker: now + 1 minute
+  const minDatetime = () => {
+    const d = new Date(Date.now() + 60000);
+    return d.toISOString().slice(0, 16);
+  };
+
+  const isExpired = (deadline: string | null) => {
+    if (!deadline) return false;
+    return new Date(deadline) < new Date();
   };
 
   if (authLoading || !user) {
@@ -93,7 +126,7 @@ export default function DashboardPage() {
       <main className="container mx-auto px-4 py-8">
         <div className="mb-8 flex items-center justify-between">
           <h1 className="text-3xl font-bold">My Wishlists</h1>
-          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+          <Dialog open={createOpen} onOpenChange={(o) => { setCreateOpen(o); if (!o) setCreateError(""); }}>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="mr-2 h-4 w-4" /> New Wishlist
@@ -121,6 +154,21 @@ export default function DashboardPage() {
                     placeholder="Things I'd love to get"
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1">
+                    <Clock className="h-3 w-3" /> Deadline (optional)
+                  </Label>
+                  <Input
+                    type="datetime-local"
+                    value={newDeadline}
+                    onChange={(e) => setNewDeadline(e.target.value)}
+                    min={minDatetime()}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Items will expire after this date. Max 3 years from now.
+                  </p>
+                </div>
+                {createError && <p className="text-sm text-destructive">{createError}</p>}
               </div>
               <DialogFooter>
                 <Button onClick={handleCreate} disabled={creating || !newTitle.trim()}>
@@ -149,17 +197,43 @@ export default function DashboardPage() {
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {wishlists.map((wl) => (
-              <Card key={wl.id} className="transition-shadow hover:shadow-md">
+              <Card key={wl.id} className={`transition-shadow hover:shadow-md ${isExpired(wl.deadline) ? "opacity-60" : ""}`}>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-lg">{wl.title}</CardTitle>
-                  {wl.description && (
-                    <CardDescription>{wl.description}</CardDescription>
-                  )}
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <CardTitle className="text-lg">{wl.title}</CardTitle>
+                      {wl.description && (
+                        <CardDescription>{wl.description}</CardDescription>
+                      )}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                      onClick={() => setDeleteId(wl.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="mb-4 text-sm text-muted-foreground">
+                  <div className="mb-2 text-sm text-muted-foreground">
                     {wl.item_count} {wl.item_count === 1 ? "item" : "items"}
                   </div>
+                  {wl.deadline && (
+                    <div className="mb-3">
+                      {isExpired(wl.deadline) ? (
+                        <span className="inline-flex items-center rounded-full bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-600">
+                          Expired
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                          <Clock className="h-3 w-3" />
+                          Until {new Date(wl.deadline).toLocaleDateString()}
+                        </span>
+                      )}
+                    </div>
+                  )}
                   <div className="flex gap-2">
                     <Button
                       size="sm"
@@ -181,6 +255,16 @@ export default function DashboardPage() {
           </div>
         )}
       </main>
+
+      <ConfirmDialog
+        open={deleteId !== null}
+        onOpenChange={(o) => { if (!o) setDeleteId(null); }}
+        title="Delete wishlist"
+        description="This will permanently delete this wishlist and all its items. This action cannot be undone."
+        confirmLabel="Delete"
+        loading={deleting}
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }

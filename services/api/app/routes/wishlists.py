@@ -1,5 +1,6 @@
 import secrets
 import uuid
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
@@ -86,12 +87,24 @@ def _wishlist_to_response(wl: Wishlist, is_owner: bool) -> dict:
     }
 
 
+def _validate_deadline(deadline: datetime | None) -> None:
+    if deadline is None:
+        return
+    now = datetime.now(timezone.utc)
+    dl = deadline if deadline.tzinfo else deadline.replace(tzinfo=timezone.utc)
+    if dl < now + timedelta(minutes=1):
+        raise HTTPException(status_code=400, detail="Deadline must be at least 1 minute in the future")
+    if dl > now + timedelta(days=365 * 3):
+        raise HTTPException(status_code=400, detail="Deadline cannot be more than 3 years from now")
+
+
 @router.post("", status_code=201)
 async def create_wishlist(
     body: WishlistCreate,
     user: User = Depends(require_user),
     db: AsyncSession = Depends(get_db),
 ):
+    _validate_deadline(body.deadline)
     wl = Wishlist(
         owner_user_id=user.id,
         title=body.title,
@@ -173,6 +186,7 @@ async def update_wishlist(
     if body.is_public is not None:
         wl.is_public = body.is_public
     if body.deadline is not None:
+        _validate_deadline(body.deadline)
         wl.deadline = body.deadline
     await db.commit()
     await db.refresh(wl)

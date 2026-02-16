@@ -3,12 +3,14 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { api, Wishlist, WishlistItem, connectWishlistWS } from "@/lib/api";
+import { api, Wishlist, WishlistItem, WishlistListItem, connectWishlistWS } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { CountdownTimer } from "@/components/ui/countdown-timer";
 import {
   Dialog,
   DialogContent,
@@ -34,6 +36,8 @@ import {
   CheckCircle2,
   Pencil,
   AlertCircle,
+  Trash2,
+  ArrowRightLeft,
 } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
 
@@ -41,11 +45,11 @@ export default function WishlistDetailPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const params = useParams();
-  const wishlistId = params.id as string;
+  const wishlistId = params?.id as string;
 
   const [wishlist, setWishlist] = useState<Wishlist | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"active" | "archived">("active");
+  const [tab, setTab] = useState<"active" | "funded" | "expired" | "archived">("active");
   const [addOpen, setAddOpen] = useState(false);
   const [itemTitle, setItemTitle] = useState("");
   const [itemUrl, setItemUrl] = useState("");
@@ -63,6 +67,12 @@ export default function WishlistDetailPage() {
   const [editImage, setEditImage] = useState("");
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [deleteItemId, setDeleteItemId] = useState<string | null>(null);
+  const [deletingItem, setDeletingItem] = useState(false);
+  const [moveItem, setMoveItem] = useState<WishlistItem | null>(null);
+  const [moveTarget, setMoveTarget] = useState("");
+  const [movingItem, setMovingItem] = useState(false);
+  const [otherWishlists, setOtherWishlists] = useState<WishlistListItem[]>([]);
 
   useEffect(() => {
     if (!authLoading && !user) router.push("/auth?mode=login");
@@ -181,6 +191,45 @@ export default function WishlistDetailPage() {
     }
   };
 
+  const handleDeleteItem = async () => {
+    if (!deleteItemId) return;
+    setDeletingItem(true);
+    try {
+      await api.items.delete(wishlistId, deleteItemId);
+      setDeleteItemId(null);
+      fetchWishlist();
+    } catch {
+      // handle error
+    } finally {
+      setDeletingItem(false);
+    }
+  };
+
+  const openMoveDialog = async (item: WishlistItem) => {
+    setMoveItem(item);
+    setMoveTarget("");
+    try {
+      const all = await api.wishlists.list();
+      setOtherWishlists(all.filter((wl) => wl.id !== wishlistId));
+    } catch {
+      setOtherWishlists([]);
+    }
+  };
+
+  const handleMoveItem = async () => {
+    if (!moveItem || !moveTarget) return;
+    setMovingItem(true);
+    try {
+      await api.items.move(wishlistId, moveItem.id, moveTarget);
+      setMoveItem(null);
+      fetchWishlist();
+    } catch {
+      // handle error
+    } finally {
+      setMovingItem(false);
+    }
+  };
+
   const copyLink = () => {
     if (!wishlist) return;
     const url = `${window.location.origin}/w/${wishlist.access_token}`;
@@ -200,8 +249,14 @@ export default function WishlistDetailPage() {
   if (!wishlist) return null;
 
   const activeItems = wishlist.items.filter((i) => i.status === "active");
+  const fundedItems = wishlist.items.filter((i) => i.status === "funded");
+  const expiredItems = wishlist.items.filter((i) => i.status === "expired");
   const archivedItems = wishlist.items.filter((i) => i.status === "archived");
-  const displayItems = tab === "active" ? activeItems : archivedItems;
+  const displayItems =
+    tab === "active" ? activeItems :
+    tab === "funded" ? fundedItems :
+    tab === "expired" ? expiredItems :
+    archivedItems;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50">
@@ -215,6 +270,11 @@ export default function WishlistDetailPage() {
               <h1 className="text-xl font-bold">{wishlist.title}</h1>
               {wishlist.description && (
                 <p className="text-sm text-muted-foreground">{wishlist.description}</p>
+              )}
+              {wishlist.deadline && (
+                <div className="mt-1">
+                  <CountdownTimer deadline={wishlist.deadline} onExpire={fetchWishlist} />
+                </div>
               )}
             </div>
           </div>
@@ -235,7 +295,7 @@ export default function WishlistDetailPage() {
 
       <main className="container mx-auto px-4 py-8">
         <div className="mb-6 flex items-center justify-between">
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               variant={tab === "active" ? "default" : "outline"}
               size="sm"
@@ -243,6 +303,26 @@ export default function WishlistDetailPage() {
             >
               Active ({activeItems.length})
             </Button>
+            {fundedItems.length > 0 && (
+              <Button
+                variant={tab === "funded" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setTab("funded")}
+                className={tab === "funded" ? "bg-green-600 hover:bg-green-700" : "text-green-700 border-green-300"}
+              >
+                <CheckCircle2 className="mr-1 h-3 w-3" /> Funded ({fundedItems.length})
+              </Button>
+            )}
+            {expiredItems.length > 0 && (
+              <Button
+                variant={tab === "expired" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setTab("expired")}
+                className={tab === "expired" ? "bg-gray-500 hover:bg-gray-600" : "text-gray-500 border-gray-300"}
+              >
+                Expired ({expiredItems.length})
+              </Button>
+            )}
             <Button
               variant={tab === "archived" ? "default" : "outline"}
               size="sm"
@@ -385,10 +465,12 @@ export default function WishlistDetailPage() {
               <OwnerItemCard
                 key={item.id}
                 item={item}
+                tab={tab}
                 onArchive={handleArchive}
                 onUnarchive={handleUnarchive}
                 onEdit={openEditDialog}
-                isArchived={tab === "archived"}
+                onDelete={(id) => setDeleteItemId(id)}
+                onMove={openMoveDialog}
               />
             ))}
           </div>
@@ -434,32 +516,84 @@ export default function WishlistDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Item Confirm */}
+      <ConfirmDialog
+        open={deleteItemId !== null}
+        onOpenChange={(o) => { if (!o) setDeleteItemId(null); }}
+        title="Delete item"
+        description="This will permanently delete this item and all its reservations and contributions. This action cannot be undone."
+        confirmLabel="Delete"
+        loading={deletingItem}
+        onConfirm={handleDeleteItem}
+      />
+
+      {/* Move Item Dialog */}
+      <Dialog open={moveItem !== null} onOpenChange={(o) => { if (!o) setMoveItem(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Move item to another wishlist</DialogTitle>
+            <DialogDescription>
+              Move &ldquo;{moveItem?.title}&rdquo; to a different wishlist. Funding progress will be preserved.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <Label>Target wishlist</Label>
+            {otherWishlists.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No other wishlists available. Create another wishlist first.</p>
+            ) : (
+              <select
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                value={moveTarget}
+                onChange={(e) => setMoveTarget(e.target.value)}
+              >
+                <option value="">Select a wishlist...</option>
+                {otherWishlists.map((wl) => (
+                  <option key={wl.id} value={wl.id}>{wl.title}</option>
+                ))}
+              </select>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMoveItem(null)}>Cancel</Button>
+            <Button onClick={handleMoveItem} disabled={movingItem || !moveTarget}>
+              {movingItem ? "Moving..." : "Move Item"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
 function OwnerItemCard({
   item,
+  tab,
   onArchive,
   onUnarchive,
   onEdit,
-  isArchived,
+  onDelete,
+  onMove,
 }: {
   item: WishlistItem;
+  tab: string;
   onArchive: (id: string) => void;
   onUnarchive: (id: string) => void;
   onEdit: (item: WishlistItem) => void;
-  isArchived: boolean;
+  onDelete: (id: string) => void;
+  onMove: (item: WishlistItem) => void;
 }) {
   const contributed = item.total_contributed;
   const progress =
     item.price_cents && item.price_cents > 0
       ? Math.min(100, Math.round((contributed / item.price_cents) * 100))
       : 0;
-  const isFullyFunded = item.price_cents != null && item.price_cents > 0 && contributed >= item.price_cents;
+  const isFunded = item.status === "funded";
+  const isExpired = item.status === "expired";
+  const isArchived = item.status === "archived";
 
   return (
-    <Card className={`overflow-hidden transition-shadow hover:shadow-md ${isArchived ? "opacity-70" : ""}`}>
+    <Card className={`overflow-hidden transition-shadow hover:shadow-md ${isArchived || isExpired ? "opacity-70" : ""}`}>
       {item.image_url && (
         <div className="relative h-40 w-full bg-muted">
           <img
@@ -471,7 +605,27 @@ function OwnerItemCard({
         </div>
       )}
       <CardContent className={item.image_url ? "pt-4" : "pt-6"}>
-        <h3 className="mb-1 font-semibold">{item.title}</h3>
+        <div className="mb-1 flex items-start justify-between gap-2">
+          <h3 className="font-semibold">{item.title}</h3>
+          {isFunded && (
+            <span className="shrink-0 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+              Funded
+            </span>
+          )}
+          {isExpired && (
+            <span className="shrink-0 rounded-full bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-600">
+              Expired
+            </span>
+          )}
+        </div>
+
+        {isFunded && (
+          <p className="mb-2 text-xs text-green-600">Спасибо всем за участие</p>
+        )}
+        {isExpired && (
+          <p className="mb-2 text-xs text-gray-500">В этот раз не получилось, скоро попробуем еще раз</p>
+        )}
+
         {item.url && (
           <a
             href={item.url}
@@ -490,13 +644,13 @@ function OwnerItemCard({
                 {formatPrice(contributed, item.currency)} collected
               </span>
             </div>
-            <Progress value={progress} />
-            {isFullyFunded && (
+            <Progress value={progress} className={isFunded ? "[&>div]:bg-green-500" : ""} />
+            {isFunded && (
               <div className="mt-1 flex items-center gap-1 text-xs font-medium text-green-600">
                 <CheckCircle2 className="h-3 w-3" /> Fully funded
               </div>
             )}
-            {!isFullyFunded && contributed > 0 && (
+            {!isFunded && contributed > 0 && !isExpired && (
               <p className="mt-1 text-xs text-muted-foreground">
                 {formatPrice(item.price_cents - contributed, item.currency)} left to collect
               </p>
@@ -511,8 +665,8 @@ function OwnerItemCard({
               </span>
             )}
           </div>
-          <div className="flex gap-1">
-            {!isArchived && (
+          <div className="flex flex-wrap gap-1">
+            {tab === "active" && (
               <>
                 <Button variant="ghost" size="sm" onClick={() => onEdit(item)}>
                   <Pencil className="mr-1 h-3 w-3" /> Edit
@@ -522,11 +676,24 @@ function OwnerItemCard({
                 </Button>
               </>
             )}
-            {isArchived && (
+            {tab === "archived" && (
               <Button variant="ghost" size="sm" onClick={() => onUnarchive(item.id)}>
                 <ArchiveRestore className="mr-1 h-3 w-3" /> Restore
               </Button>
             )}
+            {(tab === "expired") && (
+              <Button variant="ghost" size="sm" onClick={() => onMove(item)}>
+                <ArrowRightLeft className="mr-1 h-3 w-3" /> Move
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground hover:text-destructive"
+              onClick={() => onDelete(item.id)}
+            >
+              <Trash2 className="h-3 w-3" />
+            </Button>
           </div>
         </div>
       </CardContent>
