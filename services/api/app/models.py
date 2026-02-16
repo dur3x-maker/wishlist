@@ -23,6 +23,8 @@ class Base(DeclarativeBase):
 class ItemStatus(str, enum.Enum):
     active = "active"
     archived = "archived"
+    funded = "funded"
+    expired = "expired"
 
 
 class User(Base):
@@ -30,8 +32,10 @@ class User(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email: Mapped[str] = mapped_column(String(320), unique=True, nullable=False, index=True)
-    password_hash: Mapped[str] = mapped_column(String(128), nullable=False)
+    password_hash: Mapped[str | None] = mapped_column(String(128), nullable=True)
     display_name: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    oauth_provider: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    oauth_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     wishlists: Mapped[list["Wishlist"]] = relationship(back_populates="owner", lazy="selectin")
@@ -50,6 +54,7 @@ class Wishlist(Base):
         String(32), unique=True, nullable=False, index=True
     )
     is_public: Mapped[bool] = mapped_column(Boolean, default=True)
+    deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     owner: Mapped["User"] = relationship(back_populates="wishlists", lazy="selectin")

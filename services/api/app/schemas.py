@@ -35,12 +35,14 @@ class WishlistCreate(BaseModel):
     title: str = Field(min_length=1, max_length=255)
     description: str = ""
     is_public: bool = True
+    deadline: datetime | None = None
 
 
 class WishlistUpdate(BaseModel):
     title: str | None = None
     description: str | None = None
     is_public: bool | None = None
+    deadline: datetime | None = None
 
 
 class WishlistResponse(BaseModel):
@@ -50,6 +52,7 @@ class WishlistResponse(BaseModel):
     description: str
     access_token: str
     is_public: bool
+    deadline: datetime | None = None
     created_at: datetime
     items: list["ItemResponse"] = []
 
@@ -62,6 +65,7 @@ class WishlistListResponse(BaseModel):
     description: str
     access_token: str
     is_public: bool
+    deadline: datetime | None = None
     created_at: datetime
     item_count: int = 0
 
@@ -119,6 +123,8 @@ class ItemResponse(BaseModel):
     image_url: str | None
     status: str
     reserved: bool
+    is_reserved: bool = False
+    reserved_by_current_user: bool = False
     reserved_at: datetime | None
     created_at: datetime
     total_contributed: int = 0

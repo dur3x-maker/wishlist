@@ -8,7 +8,7 @@ from sqlalchemy.orm import selectinload
 
 from app.auth import get_current_user, require_user
 from app.database import get_db
-from app.models import Contribution, Item, Wishlist, User
+from app.models import Contribution, Item, ItemStatus, Wishlist, User
 from app.schemas import (
     ItemResponse,
     WishlistCreate,
@@ -20,7 +20,23 @@ from app.schemas import (
 router = APIRouter(prefix="/api/wishlists", tags=["wishlists"])
 
 
-def _item_to_response(item: Item, is_owner: bool) -> dict:
+def _compute_status(item: Item, wl: Wishlist | None = None) -> str:
+    from datetime import datetime, timezone
+    if item.status == ItemStatus.archived:
+        return ItemStatus.archived.value
+    if item.price_cents and item.price_cents > 0:
+        total = sum(c.amount_cents for c in item.contributions)
+        if total >= item.price_cents:
+            return ItemStatus.funded.value
+    wishlist = wl or getattr(item, "wishlist", None)
+    if wishlist and wishlist.deadline:
+        deadline = wishlist.deadline if wishlist.deadline.tzinfo else wishlist.deadline.replace(tzinfo=timezone.utc)
+        if deadline < datetime.now(timezone.utc) and item.status != ItemStatus.funded:
+            return ItemStatus.expired.value
+    return item.status.value if hasattr(item.status, "value") else item.status
+
+
+def _item_to_response(item: Item, is_owner: bool, wl: Wishlist | None = None) -> dict:
     total_contributed = sum(c.amount_cents for c in item.contributions)
     reservations = []
     contributions = []
@@ -46,7 +62,7 @@ def _item_to_response(item: Item, is_owner: bool) -> dict:
         "price_cents": item.price_cents,
         "currency": item.currency,
         "image_url": item.image_url,
-        "status": item.status.value if hasattr(item.status, "value") else item.status,
+        "status": _compute_status(item, wl),
         "reserved": item.reserved,
         "reserved_at": item.reserved_at.isoformat() if item.reserved_at else None,
         "created_at": item.created_at.isoformat(),
@@ -64,8 +80,9 @@ def _wishlist_to_response(wl: Wishlist, is_owner: bool) -> dict:
         "description": wl.description,
         "access_token": wl.access_token,
         "is_public": wl.is_public,
+        "deadline": wl.deadline.isoformat() if wl.deadline else None,
         "created_at": wl.created_at.isoformat(),
-        "items": [_item_to_response(i, is_owner) for i in wl.items],
+        "items": [_item_to_response(i, is_owner, wl) for i in wl.items],
     }
 
 
@@ -80,6 +97,7 @@ async def create_wishlist(
         title=body.title,
         description=body.description,
         is_public=body.is_public,
+        deadline=body.deadline,
         access_token=secrets.token_urlsafe(24),
     )
     db.add(wl)
@@ -108,6 +126,7 @@ async def list_wishlists(
             "description": wl.description,
             "access_token": wl.access_token,
             "is_public": wl.is_public,
+            "deadline": wl.deadline.isoformat() if wl.deadline else None,
             "created_at": wl.created_at.isoformat(),
             "item_count": len(wl.items),
         })
@@ -153,9 +172,28 @@ async def update_wishlist(
         wl.description = body.description
     if body.is_public is not None:
         wl.is_public = body.is_public
+    if body.deadline is not None:
+        wl.deadline = body.deadline
     await db.commit()
     await db.refresh(wl)
     return _wishlist_to_response(wl, is_owner=True)
+
+
+@router.delete("/{wishlist_id}", status_code=204)
+async def delete_wishlist(
+    wishlist_id: uuid.UUID,
+    user: User = Depends(require_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(Wishlist).where(Wishlist.id == wishlist_id, Wishlist.owner_user_id == user.id)
+    )
+    wl = result.scalar_one_or_none()
+    if not wl:
+        raise HTTPException(status_code=404, detail="Wishlist not found")
+    await db.delete(wl)
+    await db.commit()
+    return None
 
 
 @router.get("/public/{access_token}")
