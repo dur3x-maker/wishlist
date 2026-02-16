@@ -196,8 +196,10 @@ export default function WishlistDetailPage() {
     setDeletingItem(true);
     try {
       await api.items.delete(wishlistId, deleteItemId);
+      setWishlist((prev) =>
+        prev ? { ...prev, items: prev.items.filter((i) => i.id !== deleteItemId) } : prev
+      );
       setDeleteItemId(null);
-      fetchWishlist();
     } catch {
       // handle error
     } finally {
@@ -620,10 +622,10 @@ function OwnerItemCard({
         </div>
 
         {isFunded && (
-          <p className="mb-2 text-xs text-green-600">Спасибо всем за участие</p>
+          <p className="mb-2 text-xs text-green-600">Thank you all for your support!</p>
         )}
         {isExpired && (
-          <p className="mb-2 text-xs text-gray-500">В этот раз не получилось, скоро попробуем еще раз</p>
+          <p className="mb-2 text-xs text-gray-500">This time it didn&apos;t work out. We&apos;ll try again soon.</p>
         )}
 
         {item.url && (

@@ -2,13 +2,8 @@
 
 import { useEffect, useState } from "react";
 
-function russianPlural(n: number, one: string, few: string, many: string): string {
-  const abs = Math.abs(n);
-  const mod10 = abs % 10;
-  const mod100 = abs % 100;
-  if (mod10 === 1 && mod100 !== 11) return `${n} ${one}`;
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return `${n} ${few}`;
-  return `${n} ${many}`;
+function pluralize(n: number, singular: string, plural: string): string {
+  return `${n} ${n === 1 ? singular : plural}`;
 }
 
 interface TimeLeft {
@@ -74,18 +69,18 @@ export function CountdownTimer({
   if (timeLeft.expired) {
     return (
       <span className="inline-flex items-center rounded-full bg-gray-200 px-3 py-1 text-sm font-medium text-gray-600">
-        Истёк
+        Expired
       </span>
     );
   }
 
   const parts: string[] = [];
-  if (timeLeft.years > 0) parts.push(russianPlural(timeLeft.years, "год", "года", "лет"));
-  if (timeLeft.months > 0) parts.push(russianPlural(timeLeft.months, "месяц", "месяца", "месяцев"));
-  if (timeLeft.days > 0) parts.push(russianPlural(timeLeft.days, "день", "дня", "дней"));
-  parts.push(russianPlural(timeLeft.hours, "час", "часа", "часов"));
-  parts.push(russianPlural(timeLeft.minutes, "минута", "минуты", "минут"));
-  parts.push(russianPlural(timeLeft.seconds, "секунда", "секунды", "секунд"));
+  if (timeLeft.years > 0) parts.push(pluralize(timeLeft.years, "year", "years"));
+  if (timeLeft.months > 0) parts.push(pluralize(timeLeft.months, "month", "months"));
+  if (timeLeft.days > 0) parts.push(pluralize(timeLeft.days, "day", "days"));
+  parts.push(pluralize(timeLeft.hours, "hour", "hours"));
+  parts.push(pluralize(timeLeft.minutes, "minute", "minutes"));
+  parts.push(pluralize(timeLeft.seconds, "second", "seconds"));
 
   return (
     <div className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary">
