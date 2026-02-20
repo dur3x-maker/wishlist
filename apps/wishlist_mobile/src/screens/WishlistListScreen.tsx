@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useCallback} from 'react';
 import {
   View,
   Text,
@@ -7,9 +7,12 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
+  Share,
 } from 'react-native';
+import {useFocusEffect} from '@react-navigation/native';
 import {useQuery, useQueryClient} from '@tanstack/react-query';
 import {listWishlists, deleteWishlist} from '../api/wishlists';
+import {WEB_BASE_URL} from '../api/client';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import type {RootStackParamList} from '../navigation/types';
 import type {WishlistListItem} from '../types';
@@ -24,6 +27,13 @@ export default function WishlistListScreen({navigation, onLogout}: Props) {
     queryKey: ['wishlists'],
     queryFn: listWishlists,
   });
+
+  // Refetch on screen focus to keep counts and data fresh
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch]),
+  );
 
   React.useLayoutEffect(() => {
     navigation.setOptions({
@@ -97,6 +107,15 @@ export default function WishlistListScreen({navigation, onLogout}: Props) {
             ? `  ·  Due ${new Date(item.deadline).toLocaleDateString()}`
             : ''}
         </Text>
+        <TouchableOpacity
+          style={styles.shareBtn}
+          onPress={(e) => {
+            e.stopPropagation?.();
+            const publicUrl = `${WEB_BASE_URL}/w/${item.access_token}`;
+            Share.share({message: `Check out my wishlist: ${publicUrl}`, url: publicUrl});
+          }}>
+          <Text style={styles.shareText}>Share</Text>
+        </TouchableOpacity>
       </View>
       <Text style={styles.chevron}>›</Text>
     </TouchableOpacity>
@@ -138,6 +157,8 @@ const styles = StyleSheet.create({
   cardTitle: {fontSize: 17, fontWeight: '600', color: '#1a1a1a'},
   cardDesc: {fontSize: 13, color: '#888', marginTop: 2},
   cardMeta: {fontSize: 12, color: '#aaa', marginTop: 6},
+  shareBtn: {marginTop: 8, alignSelf: 'flex-start'},
+  shareText: {fontSize: 13, color: '#6C63FF', fontWeight: '600'},
   chevron: {fontSize: 22, color: '#ccc', marginLeft: 8},
   errorText: {fontSize: 16, color: '#e53e3e', marginBottom: 12},
   retryBtn: {

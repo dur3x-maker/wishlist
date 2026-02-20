@@ -24,6 +24,15 @@ export async function register(
   return data.access_token;
 }
 
+export async function googleAuth(code: string, redirectUri: string): Promise<string> {
+  const data = await apiFetch<TokenResponse>('/api/auth/google', {
+    method: 'POST',
+    body: JSON.stringify({code, redirect_uri: redirectUri}),
+  });
+  await AsyncStorage.setItem('access_token', data.access_token);
+  return data.access_token;
+}
+
 export async function getMe(): Promise<User> {
   return apiFetch<User>('/api/auth/me');
 }

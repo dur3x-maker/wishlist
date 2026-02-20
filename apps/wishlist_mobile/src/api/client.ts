@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const BASE_URL = 'https://wishlist-esls.onrender.com';
 export const WS_BASE_URL = 'wss://wishlist-esls.onrender.com';
+export const WEB_BASE_URL = 'https://wishlist-web.onrender.com';
 
 export async function apiFetch<T>(
   path: string,

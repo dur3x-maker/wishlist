@@ -65,6 +65,13 @@ export interface Wishlist {
   items: Item[];
 }
 
+export interface ScrapeResult {
+  title: string | null;
+  image_url: string | null;
+  price_cents: number | null;
+  currency: string | null;
+}
+
 export type WSEventName =
   | 'item_created'
   | 'item_updated'

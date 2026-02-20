@@ -4,7 +4,7 @@ import {NavigationContainer} from '@react-navigation/native';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import RootNavigator from './src/navigation/RootNavigator';
-import {useAuth} from './src/hooks/useAuth';
+import {AuthProvider, useAuthContext} from './src/hooks/AuthContext';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -17,7 +17,7 @@ const queryClient = new QueryClient({
 
 function AppInner() {
   const isDarkMode = useColorScheme() === 'dark';
-  const {user, loading, reload, logout} = useAuth();
+  const {user, loading, reload, logout} = useAuthContext();
 
   if (loading) {
     return (
@@ -45,7 +45,9 @@ function App() {
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
-        <AppInner />
+        <AuthProvider>
+          <AppInner />
+        </AuthProvider>
       </QueryClientProvider>
     </SafeAreaProvider>
   );

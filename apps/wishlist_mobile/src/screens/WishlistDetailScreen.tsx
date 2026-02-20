@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useCallback} from 'react';
 import {
   View,
   Text,
@@ -9,9 +9,14 @@ import {
   Alert,
   TextInput,
   Modal,
+  Share,
+  Image,
 } from 'react-native';
+import {useFocusEffect} from '@react-navigation/native';
 import {useWishlistDetail} from '../hooks/useWishlistDetail';
 import {useReserve} from '../hooks/useReserve';
+import {useAuthContext} from '../hooks/AuthContext';
+import {WEB_BASE_URL} from '../api/client';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import type {RootStackParamList} from '../navigation/types';
 import type {Item} from '../types';
@@ -20,6 +25,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'WishlistDetail'>;
 
 export default function WishlistDetailScreen({route, navigation}: Props) {
   const {wishlistId} = route.params;
+  const {user} = useAuthContext();
   const {data: wishlist, isLoading, isError, refetch} = useWishlistDetail(wishlistId);
   const {reserve, unreserve} = useReserve(
     wishlistId,
@@ -29,15 +35,34 @@ export default function WishlistDetailScreen({route, navigation}: Props) {
   const [reserveModal, setReserveModal] = useState<{itemId: string} | null>(null);
   const [displayName, setDisplayName] = useState('');
 
+  // Refetch on screen focus to keep data fresh
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch]),
+  );
+
+  const isOwner = !!user && !!wishlist && wishlist.owner_user_id === user.id;
+
   React.useLayoutEffect(() => {
     navigation.setOptions({
       title: wishlist?.title ?? 'Wishlist',
       headerRight: () => (
-        <TouchableOpacity
-          onPress={() => navigation.navigate('CreateItem', {wishlistId})}
-          style={{marginRight: 4}}>
-          <Text style={{color: '#6C63FF', fontSize: 24, lineHeight: 28}}>+</Text>
-        </TouchableOpacity>
+        <View style={{flexDirection: 'row', alignItems: 'center', gap: 12, marginRight: 4}}>
+          {wishlist?.access_token && (
+            <TouchableOpacity
+              onPress={() => {
+                const publicUrl = `${WEB_BASE_URL}/w/${wishlist.access_token}`;
+                Share.share({message: `Check out my wishlist: ${publicUrl}`, url: publicUrl});
+              }}>
+              <Text style={{color: '#6C63FF', fontSize: 15}}>Share</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            onPress={() => navigation.navigate('CreateItem', {wishlistId})}>
+            <Text style={{color: '#6C63FF', fontSize: 24, lineHeight: 28}}>+</Text>
+          </TouchableOpacity>
+        </View>
       ),
     });
   }, [navigation, wishlist, wishlistId]);
@@ -59,7 +84,17 @@ export default function WishlistDetailScreen({route, navigation}: Props) {
         },
       ]);
     } else if (!item.reserved) {
-      setReserveModal({itemId: item.id});
+      // If user is authenticated, reserve directly with their display name
+      if (user) {
+        reserve.mutate(
+          {itemId: item.id, displayName: user.display_name},
+          {
+            onError: (e: any) => Alert.alert('Error', e.message),
+          },
+        );
+      } else {
+        setReserveModal({itemId: item.id});
+      }
     }
   };
 
@@ -112,53 +147,73 @@ export default function WishlistDetailScreen({route, navigation}: Props) {
         ? '#f59e0b'
         : '#9ca3af';
 
+    // Owner must NEVER see reserve button on their own items
+    const showReserveButton = item.status === 'active' && !isOwner;
+
     return (
-      <View style={styles.card}>
-        <View style={styles.cardTop}>
-          <Text style={styles.itemTitle} numberOfLines={2}>
-            {item.title}
-          </Text>
-          <View style={[styles.statusBadge, {backgroundColor: statusColor + '20'}]}>
-            <Text style={[styles.statusText, {color: statusColor}]}>
-              {item.status}
+      <TouchableOpacity
+        style={styles.card}
+        activeOpacity={0.7}
+        onPress={() => navigation.navigate('ItemDetail', {wishlistId, itemId: item.id})}>
+        {item.image_url ? (
+          <Image
+            source={{uri: item.image_url}}
+            style={styles.cardImage}
+            resizeMode="cover"
+          />
+        ) : null}
+        <View style={styles.cardBody}>
+          <View style={styles.cardTop}>
+            <Text style={styles.itemTitle} numberOfLines={2}>
+              {item.title}
             </Text>
+            <View style={[styles.statusBadge, {backgroundColor: statusColor + '20'}]}>
+              <Text style={[styles.statusText, {color: statusColor}]}>
+                {item.status}
+              </Text>
+            </View>
           </View>
-        </View>
 
-        {item.price_cents != null && (
-          <Text style={styles.price}>
-            {(item.price_cents / 100).toLocaleString('en-US', {
-              style: 'currency',
-              currency: item.currency || 'USD',
-            })}
-            {item.total_contributed > 0 &&
-              ` · ${(item.total_contributed / 100).toFixed(0)} funded`}
-          </Text>
-        )}
-
-        {item.status === 'active' && (
-          <TouchableOpacity
-            style={[
-              styles.reserveBtn,
-              isReservedByMe && styles.reserveBtnActive,
-              isReservedByOther && styles.reserveBtnDisabled,
-            ]}
-            onPress={() => handleReservePress(item)}
-            disabled={isReservedByOther}>
-            <Text
-              style={[
-                styles.reserveBtnText,
-                isReservedByOther && {color: '#9ca3af'},
-              ]}>
-              {isReservedByMe
-                ? 'Reserved by you · Tap to unreserve'
-                : isReservedByOther
-                ? 'Already reserved'
-                : 'Reserve'}
+          {item.price_cents != null && (
+            <Text style={styles.price}>
+              {(item.price_cents / 100).toLocaleString('en-US', {
+                style: 'currency',
+                currency: item.currency || 'USD',
+              })}
+              {item.total_contributed > 0 &&
+                ` · ${(item.total_contributed / 100).toFixed(0)} funded`}
             </Text>
-          </TouchableOpacity>
-        )}
-      </View>
+          )}
+
+          {showReserveButton && (
+            <TouchableOpacity
+              style={[
+                styles.reserveBtn,
+                isReservedByMe && styles.reserveBtnActive,
+                isReservedByOther && styles.reserveBtnDisabled,
+              ]}
+              onPress={() => handleReservePress(item)}
+              disabled={isReservedByOther || reserve.isPending}>
+              {reserve.isPending ? (
+                <ActivityIndicator size="small" color="#6C63FF" />
+              ) : (
+                <Text
+                  style={[
+                    styles.reserveBtnText,
+                    isReservedByMe && {color: '#fff'},
+                    isReservedByOther && {color: '#9ca3af'},
+                  ]}>
+                  {isReservedByMe
+                    ? 'Reserved by you · Tap to unreserve'
+                    : isReservedByOther
+                    ? 'Already reserved'
+                    : 'Reserve'}
+                </Text>
+              )}
+            </TouchableOpacity>
+          )}
+        </View>
+      </TouchableOpacity>
     );
   };
 
@@ -182,6 +237,7 @@ export default function WishlistDetailScreen({route, navigation}: Props) {
         }
       />
 
+      {/* Guest-only reserve modal — authenticated users skip this */}
       <Modal
         visible={!!reserveModal}
         transparent
@@ -232,14 +288,16 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 16,
     marginBottom: 12,
     shadowColor: '#000',
     shadowOpacity: 0.06,
     shadowRadius: 8,
     shadowOffset: {width: 0, height: 2},
     elevation: 2,
+    overflow: 'hidden',
   },
+  cardImage: {width: '100%', height: 140, backgroundColor: '#f3f4f6'},
+  cardBody: {padding: 16},
   cardTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',

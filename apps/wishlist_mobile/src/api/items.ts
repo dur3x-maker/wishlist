@@ -1,5 +1,5 @@
 import {apiFetch} from './client';
-import type {Item} from '../types';
+import type {Item, ScrapeResult} from '../types';
 
 export async function createItem(
   wishlistId: string,
@@ -80,4 +80,11 @@ export async function contributeItem(
       body: JSON.stringify({display_name: displayName, amount_cents: amountCents}),
     },
   );
+}
+
+export async function scrapeUrl(url: string): Promise<ScrapeResult> {
+  return apiFetch<ScrapeResult>('/api/scrape', {
+    method: 'POST',
+    body: JSON.stringify({url}),
+  });
 }

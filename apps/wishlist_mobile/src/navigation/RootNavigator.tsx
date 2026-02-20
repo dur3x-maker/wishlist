@@ -3,6 +3,7 @@ import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import type {RootStackParamList} from './types';
 import WishlistListScreen from '../screens/WishlistListScreen';
 import WishlistDetailScreen from '../screens/WishlistDetailScreen';
+import ItemDetailScreen from '../screens/ItemDetailScreen';
 import CreateWishlistScreen from '../screens/CreateWishlistScreen';
 import CreateItemScreen from '../screens/CreateItemScreen';
 import LoginScreen from '../screens/LoginScreen';
@@ -39,6 +40,11 @@ export default function RootNavigator({isAuthenticated, onLogin, onLogout}: Prop
         name="WishlistDetail"
         component={WishlistDetailScreen}
         options={{title: 'Wishlist'}}
+      />
+      <Stack.Screen
+        name="ItemDetail"
+        component={ItemDetailScreen}
+        options={{title: 'Item Details'}}
       />
       <Stack.Screen
         name="CreateWishlist"
