@@ -41,6 +41,7 @@ export function useReserve(wishlistId: string, accessToken: string) {
       queryClient.setQueryData<Wishlist>(['wishlist', wishlistId], (old) =>
         patchItem(old, updated),
       );
+      queryClient.invalidateQueries({queryKey: ['wishlists']});
     },
   });
 
@@ -71,6 +72,7 @@ export function useReserve(wishlistId: string, accessToken: string) {
       queryClient.setQueryData<Wishlist>(['wishlist', wishlistId], (old) =>
         patchItem(old, updated),
       );
+      queryClient.invalidateQueries({queryKey: ['wishlists']});
     },
   });
 

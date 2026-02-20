@@ -28,47 +28,63 @@ export default function WishlistListScreen({navigation, onLogout}: Props) {
     queryFn: listWishlists,
   });
 
-  // Refetch on screen focus to keep counts and data fresh
   useFocusEffect(
     useCallback(() => {
       refetch();
     }, [refetch]),
   );
 
+  const handleCreate = useCallback(() => {
+    navigation.navigate('CreateWishlist');
+  }, [navigation]);
+
   React.useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => (
-        <TouchableOpacity onPress={onLogout} style={{marginRight: 4}}>
-          <Text style={{color: '#6C63FF', fontSize: 15}}>Logout</Text>
+        <TouchableOpacity onPress={onLogout} style={styles.headerMarginR}>
+          <Text style={styles.headerBtn}>Logout</Text>
         </TouchableOpacity>
       ),
       headerLeft: () => (
-        <TouchableOpacity
-          onPress={() => navigation.navigate('CreateWishlist')}
-          style={{marginLeft: 4}}>
-          <Text style={{color: '#6C63FF', fontSize: 24, lineHeight: 28}}>+</Text>
+        <TouchableOpacity onPress={handleCreate} style={styles.headerMarginL}>
+          <Text style={styles.headerPlus}>+</Text>
         </TouchableOpacity>
       ),
     });
-  }, [navigation, onLogout]);
+  }, [navigation, onLogout, handleCreate]);
 
-  const handleDelete = (id: string, title: string) => {
-    Alert.alert('Delete', `Delete "${title}"?`, [
-      {text: 'Cancel', style: 'cancel'},
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await deleteWishlist(id);
-            queryClient.invalidateQueries({queryKey: ['wishlists']});
-          } catch (e: any) {
-            Alert.alert('Error', e.message);
-          }
+  const handleDelete = useCallback(
+    (id: string, title: string) => {
+      Alert.alert('Delete', `Delete "${title}"?`, [
+        {text: 'Cancel', style: 'cancel'},
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteWishlist(id);
+              queryClient.invalidateQueries({queryKey: ['wishlists']});
+            } catch (e: any) {
+              console.error('Delete wishlist failed', e);
+              Alert.alert('Error', e.message ?? 'Delete failed');
+            }
+          },
         },
-      },
-    ]);
-  };
+      ]);
+    },
+    [queryClient],
+  );
+
+  const handleShare = useCallback((accessToken: string) => {
+    const publicUrl = `${WEB_BASE_URL}/w/${accessToken}`;
+    Share.share({message: `Check out my wishlist: ${publicUrl}`, url: publicUrl});
+  }, []);
+
+  const handleRetry = useCallback(() => {
+    refetch();
+  }, [refetch]);
+
+  const keyExtractor = useCallback((i: WishlistListItem) => i.id, []);
 
   if (isLoading) {
     return (
@@ -82,7 +98,7 @@ export default function WishlistListScreen({navigation, onLogout}: Props) {
     return (
       <View style={styles.center}>
         <Text style={styles.errorText}>Failed to load wishlists</Text>
-        <TouchableOpacity onPress={() => refetch()} style={styles.retryBtn}>
+        <TouchableOpacity onPress={handleRetry} style={styles.retryBtn}>
           <Text style={styles.retryText}>Retry</Text>
         </TouchableOpacity>
       </View>
@@ -109,11 +125,7 @@ export default function WishlistListScreen({navigation, onLogout}: Props) {
         </Text>
         <TouchableOpacity
           style={styles.shareBtn}
-          onPress={(e) => {
-            e.stopPropagation?.();
-            const publicUrl = `${WEB_BASE_URL}/w/${item.access_token}`;
-            Share.share({message: `Check out my wishlist: ${publicUrl}`, url: publicUrl});
-          }}>
+          onPress={() => handleShare(item.access_token)}>
           <Text style={styles.shareText}>Share</Text>
         </TouchableOpacity>
       </View>
@@ -124,7 +136,7 @@ export default function WishlistListScreen({navigation, onLogout}: Props) {
   return (
     <FlatList
       data={data ?? []}
-      keyExtractor={(i) => i.id}
+      keyExtractor={keyExtractor}
       renderItem={renderItem}
       contentContainerStyle={styles.list}
       ListEmptyComponent={
@@ -140,6 +152,10 @@ export default function WishlistListScreen({navigation, onLogout}: Props) {
 const styles = StyleSheet.create({
   list: {padding: 16, flexGrow: 1},
   center: {flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32},
+  headerMarginR: {marginRight: 4},
+  headerMarginL: {marginLeft: 4},
+  headerBtn: {color: '#6C63FF', fontSize: 15},
+  headerPlus: {color: '#6C63FF', fontSize: 24, lineHeight: 28},
   card: {
     backgroundColor: '#fff',
     borderRadius: 12,

@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useCallback, useState} from 'react';
 import {
   View,
   Text,
@@ -10,16 +10,9 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import {GoogleSignin} from '@react-native-google-signin/google-signin';
 import {login, googleAuth} from '../api/auth';
 import type {LoginScreenProps} from '../navigation/types';
-
-let GoogleSignin: any = null;
-try {
-  const gsi = require('@react-native-google-signin/google-signin');
-  GoogleSignin = gsi.GoogleSignin;
-} catch {
-  // Google Sign-In not installed — button will be hidden
-}
 
 interface Props extends LoginScreenProps {
   onLogin: () => void;
@@ -31,7 +24,7 @@ export default function LoginScreen({navigation, onLogin}: Props) {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
-  const handleLogin = async () => {
+  const handleLogin = useCallback(async () => {
     if (!email || !password) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
@@ -41,33 +34,39 @@ export default function LoginScreen({navigation, onLogin}: Props) {
       await login(email.trim(), password);
       onLogin();
     } catch (e: any) {
+      console.error('Login failed', e);
       Alert.alert('Login failed', e.message ?? 'Unknown error');
     } finally {
       setLoading(false);
     }
-  };
+  }, [email, password, onLogin]);
 
-  const handleGoogleLogin = async () => {
-    if (!GoogleSignin) return;
+  const handleGoogleLogin = useCallback(async () => {
     setGoogleLoading(true);
     try {
       await GoogleSignin.hasPlayServices();
       const userInfo = await GoogleSignin.signIn();
-      const serverAuthCode = userInfo?.serverAuthCode;
+      const serverAuthCode = userInfo?.data?.serverAuthCode;
       if (!serverAuthCode) {
+        console.error('Google Sign-In: no serverAuthCode returned', userInfo);
         Alert.alert('Error', 'Failed to get Google auth code');
         return;
       }
       await googleAuth(serverAuthCode, '');
       onLogin();
     } catch (e: any) {
+      console.error('Google login failed', e);
       if (e?.code !== 'SIGN_IN_CANCELLED') {
         Alert.alert('Google login failed', e.message ?? 'Unknown error');
       }
     } finally {
       setGoogleLoading(false);
     }
-  };
+  }, [onLogin]);
+
+  const navigateToRegister = useCallback(() => {
+    navigation.navigate('Register');
+  }, [navigation]);
 
   return (
     <KeyboardAvoidingView
@@ -100,29 +99,23 @@ export default function LoginScreen({navigation, onLogin}: Props) {
         )}
       </TouchableOpacity>
 
-      {GoogleSignin && (
-        <>
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or</Text>
-            <View style={styles.dividerLine} />
-          </View>
-          <TouchableOpacity
-            style={styles.googleButton}
-            onPress={handleGoogleLogin}
-            disabled={loading || googleLoading}>
-            {googleLoading ? (
-              <ActivityIndicator color="#333" />
-            ) : (
-              <Text style={styles.googleButtonText}>Sign in with Google</Text>
-            )}
-          </TouchableOpacity>
-        </>
-      )}
-
+      <View style={styles.divider}>
+        <View style={styles.dividerLine} />
+        <Text style={styles.dividerText}>or</Text>
+        <View style={styles.dividerLine} />
+      </View>
       <TouchableOpacity
-        style={styles.link}
-        onPress={() => navigation.navigate('Register')}>
+        style={styles.googleButton}
+        onPress={handleGoogleLogin}
+        disabled={loading || googleLoading}>
+        {googleLoading ? (
+          <ActivityIndicator color="#333" />
+        ) : (
+          <Text style={styles.googleButtonText}>Sign in with Google</Text>
+        )}
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.link} onPress={navigateToRegister}>
         <Text style={styles.linkText}>Don't have an account? Register</Text>
       </TouchableOpacity>
     </KeyboardAvoidingView>

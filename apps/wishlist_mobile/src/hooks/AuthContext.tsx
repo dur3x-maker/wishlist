@@ -29,7 +29,8 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
       }
       const me = await getMe();
       setUser(me);
-    } catch {
+    } catch (e) {
+      console.error('AuthContext: failed to load user', e);
       setUser(null);
     } finally {
       setLoading(false);

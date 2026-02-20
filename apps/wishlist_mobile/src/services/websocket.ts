@@ -27,8 +27,8 @@ export class WishlistSocket {
       try {
         const msg: WSMessage = JSON.parse(e.data);
         this.handlers.forEach((h) => h(msg));
-      } catch {
-        // ignore malformed frames
+      } catch (e) {
+        console.error('WebSocket: malformed frame', e);
       }
     };
 

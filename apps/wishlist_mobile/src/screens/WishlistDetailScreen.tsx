@@ -1,4 +1,4 @@
-import React, {useState, useCallback} from 'react';
+import React, {useState, useCallback, useMemo} from 'react';
 import {
   View,
   Text,
@@ -23,6 +23,33 @@ import type {Item} from '../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'WishlistDetail'>;
 
+const STATUS_COLORS: Record<string, string> = {
+  active: '#22c55e',
+  funded: '#6C63FF',
+  expired: '#f59e0b',
+};
+const DEFAULT_STATUS_COLOR = '#9ca3af';
+
+function ProgressBar({item}: {item: Item}) {
+  if (item.price_cents == null || item.price_cents <= 0) {
+    return null;
+  }
+  const progress = Math.min(100, Math.round((item.total_contributed / item.price_cents) * 100));
+  const funded = (item.total_contributed / 100).toFixed(2);
+  const total = (item.price_cents / 100).toFixed(2);
+  const cur = item.currency || 'USD';
+  return (
+    <View style={styles.progressSection}>
+      <View style={styles.progressTrack}>
+        <View style={[styles.progressFill, {width: `${progress}%`}]} />
+      </View>
+      <Text style={styles.progressLabel}>
+        {cur} {funded} of {cur} {total} ({progress}%)
+      </Text>
+    </View>
+  );
+}
+
 export default function WishlistDetailScreen({route, navigation}: Props) {
   const {wishlistId} = route.params;
   const {user} = useAuthContext();
@@ -35,70 +62,88 @@ export default function WishlistDetailScreen({route, navigation}: Props) {
   const [reserveModal, setReserveModal] = useState<{itemId: string} | null>(null);
   const [displayName, setDisplayName] = useState('');
 
-  // Refetch on screen focus to keep data fresh
   useFocusEffect(
     useCallback(() => {
       refetch();
     }, [refetch]),
   );
 
-  const isOwner = !!user && !!wishlist && wishlist.owner_user_id === user.id;
+  const isOwner = useMemo(
+    () => !!user && !!wishlist && wishlist.owner_user_id === user.id,
+    [user, wishlist],
+  );
+
+  const handleShare = useCallback(() => {
+    if (!wishlist?.access_token) return;
+    const publicUrl = `${WEB_BASE_URL}/w/${wishlist.access_token}`;
+    Share.share({message: `Check out my wishlist: ${publicUrl}`, url: publicUrl});
+  }, [wishlist?.access_token]);
+
+  const handleAddItem = useCallback(() => {
+    navigation.navigate('CreateItem', {wishlistId});
+  }, [navigation, wishlistId]);
 
   React.useLayoutEffect(() => {
     navigation.setOptions({
       title: wishlist?.title ?? 'Wishlist',
       headerRight: () => (
-        <View style={{flexDirection: 'row', alignItems: 'center', gap: 12, marginRight: 4}}>
-          {wishlist?.access_token && (
-            <TouchableOpacity
-              onPress={() => {
-                const publicUrl = `${WEB_BASE_URL}/w/${wishlist.access_token}`;
-                Share.share({message: `Check out my wishlist: ${publicUrl}`, url: publicUrl});
-              }}>
-              <Text style={{color: '#6C63FF', fontSize: 15}}>Share</Text>
+        <View style={styles.headerRight}>
+          {wishlist?.access_token ? (
+            <TouchableOpacity onPress={handleShare}>
+              <Text style={styles.headerBtn}>Share</Text>
             </TouchableOpacity>
-          )}
-          <TouchableOpacity
-            onPress={() => navigation.navigate('CreateItem', {wishlistId})}>
-            <Text style={{color: '#6C63FF', fontSize: 24, lineHeight: 28}}>+</Text>
+          ) : null}
+          <TouchableOpacity onPress={handleAddItem}>
+            <Text style={styles.headerPlus}>+</Text>
           </TouchableOpacity>
         </View>
       ),
     });
-  }, [navigation, wishlist, wishlistId]);
+  }, [navigation, wishlist, handleShare, handleAddItem]);
 
-  const handleReservePress = (item: Item) => {
-    if (item.reserved_by_current_user) {
-      Alert.alert('Unreserve', `Unreserve "${item.title}"?`, [
-        {text: 'Cancel', style: 'cancel'},
-        {
-          text: 'Unreserve',
-          style: 'destructive',
-          onPress: () =>
-            unreserve.mutate(
-              {itemId: item.id},
-              {
-                onError: (e: any) => Alert.alert('Error', e.message),
-              },
-            ),
-        },
-      ]);
-    } else if (!item.reserved) {
-      // If user is authenticated, reserve directly with their display name
-      if (user) {
-        reserve.mutate(
-          {itemId: item.id, displayName: user.display_name},
+  const handleReservePress = useCallback(
+    (item: Item) => {
+      // STRICT OWNER GUARD — never allow owner to reserve
+      if (isOwner) return;
+
+      if (item.reserved_by_current_user) {
+        Alert.alert('Unreserve', `Unreserve "${item.title}"?`, [
+          {text: 'Cancel', style: 'cancel'},
           {
-            onError: (e: any) => Alert.alert('Error', e.message),
+            text: 'Unreserve',
+            style: 'destructive',
+            onPress: () =>
+              unreserve.mutate(
+                {itemId: item.id},
+                {
+                  onError: (e: any) => {
+                    console.error('Unreserve failed', e);
+                    Alert.alert('Error', e.message ?? 'Unreserve failed');
+                  },
+                },
+              ),
           },
-        );
-      } else {
-        setReserveModal({itemId: item.id});
+        ]);
+      } else if (!item.reserved) {
+        if (user) {
+          reserve.mutate(
+            {itemId: item.id, displayName: user.display_name},
+            {
+              onError: (e: any) => {
+                console.error('Reserve failed', e);
+                Alert.alert('Error', e.message ?? 'Reserve failed');
+              },
+            },
+          );
+        } else {
+          setReserveModal({itemId: item.id});
+        }
       }
-    }
-  };
+    },
+    [isOwner, user, reserve, unreserve],
+  );
 
-  const submitReserve = () => {
+  const submitReserve = useCallback(() => {
     if (!displayName.trim()) {
       Alert.alert('Error', 'Please enter your name');
       return;
@@ -111,10 +156,24 @@ export default function WishlistDetailScreen({route, navigation}: Props) {
           setReserveModal(null);
           setDisplayName('');
         },
-        onError: (e: any) => Alert.alert('Error', e.message),
+        onError: (e: any) => {
+          console.error('Reserve failed', e);
+          Alert.alert('Error', e.message ?? 'Reserve failed');
+        },
       },
     );
-  };
+  }, [displayName, reserveModal, reserve]);
+
+  const closeModal = useCallback(() => {
+    setReserveModal(null);
+    setDisplayName('');
+  }, []);
+
+  const handleRetry = useCallback(() => {
+    refetch();
+  }, [refetch]);
+
+  const keyExtractor = useCallback((i: Item) => i.id, []);
 
   if (isLoading) {
     return (
@@ -128,7 +187,7 @@ export default function WishlistDetailScreen({route, navigation}: Props) {
     return (
       <View style={styles.center}>
         <Text style={styles.errorText}>Failed to load wishlist</Text>
-        <TouchableOpacity onPress={() => refetch()} style={styles.retryBtn}>
+        <TouchableOpacity onPress={handleRetry} style={styles.retryBtn}>
           <Text style={styles.retryText}>Retry</Text>
         </TouchableOpacity>
       </View>
@@ -138,16 +197,10 @@ export default function WishlistDetailScreen({route, navigation}: Props) {
   const renderItem = ({item}: {item: Item}) => {
     const isReservedByMe = item.reserved_by_current_user;
     const isReservedByOther = item.reserved && !isReservedByMe;
-    const statusColor =
-      item.status === 'active'
-        ? '#22c55e'
-        : item.status === 'funded'
-        ? '#6C63FF'
-        : item.status === 'expired'
-        ? '#f59e0b'
-        : '#9ca3af';
+    const statusColor = STATUS_COLORS[item.status] ?? DEFAULT_STATUS_COLOR;
+    const badgeBg = statusColor + '20';
 
-    // Owner must NEVER see reserve button on their own items
+    // Owner must NEVER see reserve button
     const showReserveButton = item.status === 'active' && !isOwner;
 
     return (
@@ -167,7 +220,7 @@ export default function WishlistDetailScreen({route, navigation}: Props) {
             <Text style={styles.itemTitle} numberOfLines={2}>
               {item.title}
             </Text>
-            <View style={[styles.statusBadge, {backgroundColor: statusColor + '20'}]}>
+            <View style={[styles.statusBadge, {backgroundColor: badgeBg}]}>
               <Text style={[styles.statusText, {color: statusColor}]}>
                 {item.status}
               </Text>
@@ -180,10 +233,10 @@ export default function WishlistDetailScreen({route, navigation}: Props) {
                 style: 'currency',
                 currency: item.currency || 'USD',
               })}
-              {item.total_contributed > 0 &&
-                ` · ${(item.total_contributed / 100).toFixed(0)} funded`}
             </Text>
           )}
+
+          <ProgressBar item={item} />
 
           {showReserveButton && (
             <TouchableOpacity
@@ -200,8 +253,8 @@ export default function WishlistDetailScreen({route, navigation}: Props) {
                 <Text
                   style={[
                     styles.reserveBtnText,
-                    isReservedByMe && {color: '#fff'},
-                    isReservedByOther && {color: '#9ca3af'},
+                    isReservedByMe && styles.reserveBtnTextActive,
+                    isReservedByOther && styles.reserveBtnTextDisabled,
                   ]}>
                   {isReservedByMe
                     ? 'Reserved by you · Tap to unreserve'
@@ -221,7 +274,7 @@ export default function WishlistDetailScreen({route, navigation}: Props) {
     <>
       <FlatList
         data={wishlist.items}
-        keyExtractor={(i) => i.id}
+        keyExtractor={keyExtractor}
         renderItem={renderItem}
         contentContainerStyle={styles.list}
         ListHeaderComponent={
@@ -237,12 +290,11 @@ export default function WishlistDetailScreen({route, navigation}: Props) {
         }
       />
 
-      {/* Guest-only reserve modal — authenticated users skip this */}
       <Modal
         visible={!!reserveModal}
         transparent
         animationType="slide"
-        onRequestClose={() => setReserveModal(null)}>
+        onRequestClose={closeModal}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalBox}>
             <Text style={styles.modalTitle}>Reserve Item</Text>
@@ -255,12 +307,7 @@ export default function WishlistDetailScreen({route, navigation}: Props) {
               autoFocus
             />
             <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={styles.modalCancel}
-                onPress={() => {
-                  setReserveModal(null);
-                  setDisplayName('');
-                }}>
+              <TouchableOpacity style={styles.modalCancel} onPress={closeModal}>
                 <Text style={styles.modalCancelText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -285,6 +332,9 @@ const styles = StyleSheet.create({
   list: {padding: 16, flexGrow: 1},
   center: {flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32},
   description: {fontSize: 14, color: '#666', marginBottom: 16},
+  headerRight: {flexDirection: 'row', alignItems: 'center', gap: 12, marginRight: 4},
+  headerBtn: {color: '#6C63FF', fontSize: 15},
+  headerPlus: {color: '#6C63FF', fontSize: 24, lineHeight: 28},
   card: {
     backgroundColor: '#fff',
     borderRadius: 12,
@@ -307,7 +357,17 @@ const styles = StyleSheet.create({
   itemTitle: {fontSize: 16, fontWeight: '600', color: '#1a1a1a', flex: 1, marginRight: 8},
   statusBadge: {borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3},
   statusText: {fontSize: 11, fontWeight: '600', textTransform: 'uppercase'},
-  price: {fontSize: 14, color: '#555', marginBottom: 10},
+  price: {fontSize: 14, color: '#555', marginBottom: 4},
+  progressSection: {marginBottom: 10},
+  progressTrack: {
+    height: 6,
+    backgroundColor: '#e5e7eb',
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginBottom: 4,
+  },
+  progressFill: {height: 6, borderRadius: 3, backgroundColor: '#6C63FF'},
+  progressLabel: {fontSize: 12, color: '#888'},
   reserveBtn: {
     borderWidth: 1.5,
     borderColor: '#6C63FF',
@@ -319,6 +379,8 @@ const styles = StyleSheet.create({
   reserveBtnActive: {backgroundColor: '#6C63FF'},
   reserveBtnDisabled: {borderColor: '#e5e7eb'},
   reserveBtnText: {color: '#6C63FF', fontWeight: '600', fontSize: 14},
+  reserveBtnTextActive: {color: '#fff'},
+  reserveBtnTextDisabled: {color: '#9ca3af'},
   errorText: {fontSize: 16, color: '#e53e3e', marginBottom: 12},
   retryBtn: {
     backgroundColor: '#6C63FF',

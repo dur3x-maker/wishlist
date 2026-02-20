@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useCallback, useState} from 'react';
 import {
   View,
   Text,
@@ -12,8 +12,9 @@ import {
   ScrollView,
   Image,
 } from 'react-native';
+import {launchImageLibrary} from 'react-native-image-picker';
 import {useQueryClient} from '@tanstack/react-query';
-import {createItem, scrapeUrl} from '../api/items';
+import {createItem, scrapeUrl, uploadImage} from '../api/items';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import type {RootStackParamList} from '../navigation/types';
 
@@ -30,8 +31,9 @@ export default function CreateItemScreen({route, navigation}: Props) {
   const [imageUrl, setImageUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [scraping, setScraping] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
-  const handleScrape = async () => {
+  const handleScrape = useCallback(async () => {
     const trimmed = url.trim();
     if (!trimmed || !trimmed.startsWith('http')) return;
     setScraping(true);
@@ -45,14 +47,48 @@ export default function CreateItemScreen({route, navigation}: Props) {
       if (result.currency && currency === 'USD') {
         setCurrency(result.currency);
       }
-    } catch {
-      // Scrape failed silently — user can fill in manually
+    } catch (e) {
+      console.error('Scrape failed', e);
+      Alert.alert('Autofill failed', 'Could not extract info from URL. You can fill in fields manually.');
     } finally {
       setScraping(false);
     }
-  };
+  }, [url, title, imageUrl, priceCents, currency]);
 
-  const handleCreate = async () => {
+  const handlePickImage = useCallback(async () => {
+    try {
+      const result = await launchImageLibrary({
+        mediaType: 'photo',
+        quality: 0.8,
+        selectionLimit: 1,
+      });
+      if (result.didCancel || !result.assets?.length) return;
+      const asset = result.assets[0];
+      if (!asset.uri) return;
+
+      setUploading(true);
+      try {
+        const uploaded = await uploadImage(
+          asset.uri,
+          asset.fileName ?? 'image.jpg',
+          asset.type ?? 'image/jpeg',
+        );
+        setImageUrl(uploaded.url);
+      } catch (uploadErr: any) {
+        console.error('Image upload failed', uploadErr);
+        // Fallback: use local URI as preview (won't persist on backend without upload endpoint)
+        setImageUrl(asset.uri);
+        Alert.alert('Upload unavailable', 'Image selected locally. Upload endpoint not configured on backend.');
+      } finally {
+        setUploading(false);
+      }
+    } catch (e) {
+      console.error('Image picker failed', e);
+      Alert.alert('Error', 'Failed to open image picker');
+    }
+  }, []);
+
+  const handleCreate = useCallback(async () => {
     if (!title.trim()) {
       Alert.alert('Error', 'Title is required');
       return;
@@ -75,15 +111,16 @@ export default function CreateItemScreen({route, navigation}: Props) {
       queryClient.invalidateQueries({queryKey: ['wishlists']});
       navigation.goBack();
     } catch (e: any) {
+      console.error('Create item failed', e);
       Alert.alert('Error', e.message ?? 'Failed to create item');
     } finally {
       setLoading(false);
     }
-  };
+  }, [title, url, priceCents, currency, imageUrl, wishlistId, queryClient, navigation]);
 
   return (
     <KeyboardAvoidingView
-      style={{flex: 1}}
+      style={styles.flex1}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.label}>URL</Text>
@@ -142,15 +179,27 @@ export default function CreateItemScreen({route, navigation}: Props) {
           </View>
         </View>
 
-        <Text style={styles.label}>Image URL</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="https://example.com/image.jpg"
-          value={imageUrl}
-          onChangeText={setImageUrl}
-          autoCapitalize="none"
-          keyboardType="url"
-        />
+        <Text style={styles.label}>Image</Text>
+        <View style={styles.imageRow}>
+          <TextInput
+            style={[styles.input, styles.urlInput]}
+            placeholder="https://example.com/image.jpg"
+            value={imageUrl}
+            onChangeText={setImageUrl}
+            autoCapitalize="none"
+            keyboardType="url"
+          />
+          <TouchableOpacity
+            style={styles.pickBtn}
+            onPress={handlePickImage}
+            disabled={uploading}>
+            {uploading ? (
+              <ActivityIndicator size="small" color="#6C63FF" />
+            ) : (
+              <Text style={styles.pickBtnText}>Gallery</Text>
+            )}
+          </TouchableOpacity>
+        </View>
         {imageUrl ? (
           <Image
             source={{uri: imageUrl}}
@@ -162,7 +211,7 @@ export default function CreateItemScreen({route, navigation}: Props) {
         <TouchableOpacity
           style={styles.button}
           onPress={handleCreate}
-          disabled={loading}>
+          disabled={loading || uploading}>
           {loading ? (
             <ActivityIndicator color="#fff" />
           ) : (
@@ -175,6 +224,7 @@ export default function CreateItemScreen({route, navigation}: Props) {
 }
 
 const styles = StyleSheet.create({
+  flex1: {flex: 1},
   container: {padding: 24, backgroundColor: '#fff', flexGrow: 1},
   label: {fontSize: 13, fontWeight: '600', color: '#555', marginBottom: 6, marginTop: 16},
   input: {
@@ -200,6 +250,16 @@ const styles = StyleSheet.create({
   flex: {flex: 1},
   currencyBox: {width: 90},
   currencyInput: {textAlign: 'center'},
+  imageRow: {flexDirection: 'row', gap: 8},
+  pickBtn: {
+    borderWidth: 1.5,
+    borderColor: '#6C63FF',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pickBtnText: {color: '#6C63FF', fontWeight: '600', fontSize: 14},
   imagePreview: {
     width: '100%',
     height: 160,

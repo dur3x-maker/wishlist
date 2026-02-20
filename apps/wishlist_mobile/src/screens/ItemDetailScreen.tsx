@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useCallback, useMemo} from 'react';
 import {
   View,
   Text,
@@ -7,19 +7,83 @@ import {
   Image,
   Linking,
   TouchableOpacity,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import {useQueryClient} from '@tanstack/react-query';
+import {useReserve} from '../hooks/useReserve';
+import {useAuthContext} from '../hooks/AuthContext';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import type {RootStackParamList} from '../navigation/types';
 import type {Wishlist, Item} from '../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ItemDetail'>;
 
+const STATUS_COLORS: Record<string, string> = {
+  active: '#22c55e',
+  funded: '#6C63FF',
+  expired: '#f59e0b',
+};
+const DEFAULT_STATUS_COLOR = '#9ca3af';
+
 export default function ItemDetailScreen({route}: Props) {
   const {wishlistId, itemId} = route.params;
+  const {user} = useAuthContext();
   const queryClient = useQueryClient();
   const wishlist = queryClient.getQueryData<Wishlist>(['wishlist', wishlistId]);
   const item = wishlist?.items.find((i: Item) => i.id === itemId);
+  const {reserve, unreserve} = useReserve(
+    wishlistId,
+    wishlist?.access_token ?? '',
+  );
+
+  const isOwner = useMemo(
+    () => !!user && !!wishlist && wishlist.owner_user_id === user.id,
+    [user, wishlist],
+  );
+
+  const handleOpenUrl = useCallback(() => {
+    if (item?.url) {
+      Linking.openURL(item.url).catch((e) => {
+        console.error('Failed to open URL', e);
+        Alert.alert('Error', 'Could not open URL');
+      });
+    }
+  }, [item?.url]);
+
+  const handleReserve = useCallback(() => {
+    if (!item || isOwner) return;
+
+    if (item.reserved_by_current_user) {
+      Alert.alert('Unreserve', `Unreserve "${item.title}"?`, [
+        {text: 'Cancel', style: 'cancel'},
+        {
+          text: 'Unreserve',
+          style: 'destructive',
+          onPress: () =>
+            unreserve.mutate(
+              {itemId: item.id},
+              {
+                onError: (e: any) => {
+                  console.error('Unreserve failed', e);
+                  Alert.alert('Error', e.message ?? 'Unreserve failed');
+                },
+              },
+            ),
+        },
+      ]);
+    } else if (!item.reserved && user) {
+      reserve.mutate(
+        {itemId: item.id, displayName: user.display_name},
+        {
+          onError: (e: any) => {
+            console.error('Reserve failed', e);
+            Alert.alert('Error', e.message ?? 'Reserve failed');
+          },
+        },
+      );
+    }
+  }, [item, isOwner, user, reserve, unreserve]);
 
   if (!item) {
     return (
@@ -29,29 +93,27 @@ export default function ItemDetailScreen({route}: Props) {
     );
   }
 
-  const statusColor =
-    item.status === 'active'
-      ? '#22c55e'
-      : item.status === 'funded'
-      ? '#6C63FF'
-      : item.status === 'expired'
-      ? '#f59e0b'
-      : '#9ca3af';
+  const statusColor = STATUS_COLORS[item.status] ?? DEFAULT_STATUS_COLOR;
+  const badgeBg = statusColor + '20';
 
   const progress =
     item.price_cents && item.price_cents > 0
       ? Math.min(100, Math.round((item.total_contributed / item.price_cents) * 100))
       : 0;
 
+  const showReserveButton = item.status === 'active' && !isOwner;
+  const isReservedByMe = item.reserved_by_current_user;
+  const isReservedByOther = item.reserved && !isReservedByMe;
+
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
       {item.image_url ? (
-        <Image source={{uri: item.image_url}} style={styles.image} />
+        <Image source={{uri: item.image_url}} style={styles.image} resizeMode="cover" />
       ) : null}
 
       <View style={styles.header}>
         <Text style={styles.title}>{item.title}</Text>
-        <View style={[styles.statusBadge, {backgroundColor: statusColor + '20'}]}>
+        <View style={[styles.statusBadge, {backgroundColor: badgeBg}]}>
           <Text style={[styles.statusText, {color: statusColor}]}>
             {item.status}
           </Text>
@@ -59,9 +121,7 @@ export default function ItemDetailScreen({route}: Props) {
       </View>
 
       {item.url ? (
-        <TouchableOpacity
-          style={styles.urlRow}
-          onPress={() => Linking.openURL(item.url!)}>
+        <TouchableOpacity style={styles.urlRow} onPress={handleOpenUrl}>
           <Text style={styles.urlText} numberOfLines={1}>
             {item.url}
           </Text>
@@ -78,31 +138,56 @@ export default function ItemDetailScreen({route}: Props) {
             })}
           </Text>
 
-          {item.total_contributed > 0 && (
-            <>
-              <View style={styles.progressBar}>
-                <View
-                  style={[
-                    styles.progressFill,
-                    {width: `${progress}%`, backgroundColor: statusColor},
-                  ]}
-                />
-              </View>
-              <Text style={styles.progressText}>
-                {(item.total_contributed / 100).toFixed(2)} {item.currency || 'USD'} funded ({progress}%)
-              </Text>
-            </>
-          )}
+          <View style={styles.progressBar}>
+            <View
+              style={[
+                styles.progressFill,
+                {width: `${progress}%`, backgroundColor: statusColor},
+              ]}
+            />
+          </View>
+          <Text style={styles.progressText}>
+            {item.currency || 'USD'} {(item.total_contributed / 100).toFixed(2)} funded of{' '}
+            {item.currency || 'USD'} {(item.price_cents / 100).toFixed(2)} ({progress}%)
+          </Text>
         </View>
       )}
 
       {item.reserved && (
         <View style={styles.reservedBanner}>
           <Text style={styles.reservedText}>
-            {item.reserved_by_current_user
-              ? 'Reserved by you'
-              : 'Reserved'}
+            {isReservedByMe ? 'Reserved by you' : 'Reserved'}
           </Text>
+        </View>
+      )}
+
+      {showReserveButton && (
+        <View style={styles.reserveSection}>
+          <TouchableOpacity
+            style={[
+              styles.reserveBtn,
+              isReservedByMe && styles.reserveBtnActive,
+              isReservedByOther && styles.reserveBtnDisabled,
+            ]}
+            onPress={handleReserve}
+            disabled={isReservedByOther || reserve.isPending || unreserve.isPending}>
+            {reserve.isPending || unreserve.isPending ? (
+              <ActivityIndicator size="small" color="#6C63FF" />
+            ) : (
+              <Text
+                style={[
+                  styles.reserveBtnText,
+                  isReservedByMe && styles.reserveBtnTextActive,
+                  isReservedByOther && styles.reserveBtnTextDisabled,
+                ]}>
+                {isReservedByMe
+                  ? 'Reserved by you · Tap to unreserve'
+                  : isReservedByOther
+                  ? 'Already reserved'
+                  : 'Reserve this item'}
+              </Text>
+            )}
+          </TouchableOpacity>
         </View>
       )}
 
@@ -161,6 +246,19 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   reservedText: {color: '#16a34a', fontWeight: '600', fontSize: 14},
+  reserveSection: {paddingHorizontal: 16, marginBottom: 16},
+  reserveBtn: {
+    borderWidth: 1.5,
+    borderColor: '#6C63FF',
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  reserveBtnActive: {backgroundColor: '#6C63FF'},
+  reserveBtnDisabled: {borderColor: '#e5e7eb'},
+  reserveBtnText: {color: '#6C63FF', fontWeight: '600', fontSize: 15},
+  reserveBtnTextActive: {color: '#fff'},
+  reserveBtnTextDisabled: {color: '#9ca3af'},
   section: {paddingHorizontal: 16, marginBottom: 16},
   sectionTitle: {fontSize: 14, fontWeight: '600', color: '#555', marginBottom: 8},
   contributionRow: {

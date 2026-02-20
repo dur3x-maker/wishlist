@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const BASE_URL = 'https://wishlist-esls.onrender.com';
 export const WS_BASE_URL = 'wss://wishlist-esls.onrender.com';
-export const WEB_BASE_URL = 'https://wishlist-web.onrender.com';
+export const WEB_BASE_URL = 'https://wishlist-ecru-one.vercel.app';
 
 export async function apiFetch<T>(
   path: string,
@@ -26,6 +26,27 @@ export async function apiFetch<T>(
   }
   if (res.status === 204) {
     return undefined as unknown as T;
+  }
+  return res.json();
+}
+
+export async function apiUpload<T>(
+  path: string,
+  formData: FormData,
+): Promise<T> {
+  const token = await AsyncStorage.getItem('access_token');
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method: 'POST',
+    headers,
+    body: formData,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new ApiError(res.status, body?.detail ?? 'Upload failed');
   }
   return res.json();
 }

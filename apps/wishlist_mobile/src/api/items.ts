@@ -1,4 +1,4 @@
-import {apiFetch} from './client';
+import {apiFetch, apiUpload} from './client';
 import type {Item, ScrapeResult} from '../types';
 
 export async function createItem(
@@ -87,4 +87,18 @@ export async function scrapeUrl(url: string): Promise<ScrapeResult> {
     method: 'POST',
     body: JSON.stringify({url}),
   });
+}
+
+export async function uploadImage(
+  uri: string,
+  fileName: string,
+  mimeType: string,
+): Promise<{url: string}> {
+  const formData = new FormData();
+  formData.append('file', {
+    uri,
+    name: fileName,
+    type: mimeType,
+  } as any);
+  return apiUpload<{url: string}>('/api/upload', formData);
 }

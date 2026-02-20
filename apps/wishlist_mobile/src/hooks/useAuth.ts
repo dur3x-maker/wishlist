@@ -15,7 +15,8 @@ export function useAuth() {
       }
       const me = await getMe();
       setUser(me);
-    } catch {
+    } catch (e) {
+      console.error('useAuth: failed to load user', e);
       setUser(null);
     } finally {
       setLoading(false);
