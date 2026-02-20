@@ -7,18 +7,22 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
 
   const loadUser = useCallback(async () => {
+    console.log('[useAuth] loadUser start');
     try {
       const token = await getStoredToken();
+      console.log('[useAuth] token:', token ? 'exists' : 'null');
       if (!token) {
         setUser(null);
         return;
       }
       const me = await getMe();
+      console.log('[useAuth] getMe result:', me?.id ?? 'null');
       setUser(me);
     } catch (e) {
-      console.error('useAuth: failed to load user', e);
+      console.error('[useAuth] failed to load user', e);
       setUser(null);
     } finally {
+      console.log('[useAuth] loadUser done, setting loading=false');
       setLoading(false);
     }
   }, []);
