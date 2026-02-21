@@ -38,6 +38,8 @@ export function useWishlistDetail(wishlistId: string) {
 
         return {...old, items};
       });
+
+      queryClient.invalidateQueries({queryKey: ['wishlists']});
     };
 
     socket.addHandler(handler);

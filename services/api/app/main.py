@@ -1,9 +1,7 @@
-import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
 from app.config import settings
@@ -39,11 +37,6 @@ app.include_router(items.router)
 app.include_router(scrape.router)
 app.include_router(ws.router)
 app.include_router(upload.router)
-
-# Serve uploaded images
-_upload_dir = os.path.join(os.path.dirname(__file__), "uploads")
-os.makedirs(_upload_dir, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=_upload_dir), name="uploads")
 
 
 @app.get("/api/health")

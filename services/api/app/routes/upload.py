@@ -1,14 +1,20 @@
 import os
-import uuid
 
+import cloudinary
+import cloudinary.uploader
 from fastapi import APIRouter, File, UploadFile, HTTPException
 from fastapi.responses import JSONResponse
 
 router = APIRouter(prefix="/api", tags=["upload"])
 
-UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
 ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml"}
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
+
+cloudinary.config(
+    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+    api_key=os.getenv("CLOUDINARY_API_KEY"),
+    api_secret=os.getenv("CLOUDINARY_API_SECRET"),
+)
 
 
 @router.post("/upload")
@@ -20,14 +26,9 @@ async def upload_image(file: UploadFile = File(...)):
     if len(data) > MAX_FILE_SIZE:
         raise HTTPException(status_code=400, detail="File too large (max 5 MB)")
 
-    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    try:
+        result = cloudinary.uploader.upload(data, folder="wishlist")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Image upload failed: {e}")
 
-    ext = os.path.splitext(file.filename or "image.jpg")[1] or ".jpg"
-    filename = f"{uuid.uuid4().hex}{ext}"
-    filepath = os.path.join(UPLOAD_DIR, filename)
-
-    with open(filepath, "wb") as f:
-        f.write(data)
-
-    # Return a relative URL; the frontend prepends BASE_URL
-    return JSONResponse({"url": f"/uploads/{filename}"})
+    return JSONResponse({"url": result["secure_url"]})
