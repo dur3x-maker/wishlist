@@ -20,26 +20,38 @@ export function useWishlistDetail(wishlistId: string) {
     const handler = (msg: WSMessage) => {
       queryClient.setQueryData<Wishlist>(['wishlist', wishlistId], (old) => {
         if (!old) return old;
-        const updatedItem: Item = msg.data;
+        const incoming: Item = msg.data;
         let items = old.items;
 
         if (msg.event === 'item_created') {
-          const exists = items.some((i) => i.id === updatedItem.id);
-          items = exists ? items : [...items, updatedItem];
+          const exists = items.some((i) => i.id === incoming.id);
+          items = exists ? items : [...items, incoming];
         } else if (
-          msg.event === 'item_updated' ||
-          msg.event === 'item_reserved' ||
-          msg.event === 'item_unreserved' ||
           msg.event === 'contribution_added' ||
           msg.event === 'contribution_created'
         ) {
-          items = items.map((i) => (i.id === updatedItem.id ? updatedItem : i));
+          items = items.map((i) =>
+            i.id === incoming.id
+              ? {
+                  ...i,
+                  contributions: incoming.contributions,
+                  total_contributed: incoming.total_contributed,
+                  status: incoming.status,
+                }
+              : i,
+          );
+        } else if (
+          msg.event === 'item_updated' ||
+          msg.event === 'item_reserved' ||
+          msg.event === 'item_unreserved'
+        ) {
+          items = items.map((i) => (i.id === incoming.id ? {...i, ...incoming} : i));
         }
 
         return {...old, items};
       });
 
-      queryClient.invalidateQueries({queryKey: ['wishlists']});
+      queryClient.invalidateQueries({queryKey: ['wishlist', wishlistId]});
     };
 
     socket.addHandler(handler);

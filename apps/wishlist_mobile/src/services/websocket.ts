@@ -21,24 +21,32 @@ export class WishlistSocket {
 
   private _open(): void {
     const url = `${WS_BASE_URL}/ws/wishlists/${this.wishlistId}`;
+    console.log('[WS] connecting', url);
     this.ws = new WebSocket(url);
+
+    this.ws.onopen = () => {
+      console.log('[WS] connected', this.wishlistId);
+    };
 
     this.ws.onmessage = (e) => {
       try {
         const msg: WSMessage = JSON.parse(e.data);
         this.handlers.forEach((h) => h(msg));
-      } catch (e) {
-        console.error('WebSocket: malformed frame', e);
+      } catch (e: any) {
+        console.error('[WS] malformed frame:', e?.message, e);
       }
     };
 
-    this.ws.onclose = () => {
+    this.ws.onclose = (ev) => {
+      console.log('[WS] closed', this.wishlistId, 'code:', ev?.code, 'reason:', ev?.reason);
       if (this.shouldReconnect) {
+        console.log('[WS] reconnecting in 3s…', this.wishlistId);
         this.reconnectTimer = setTimeout(() => this._open(), 3000);
       }
     };
 
-    this.ws.onerror = () => {
+    this.ws.onerror = (ev: any) => {
+      console.error('[WS] error:', ev?.message ?? 'unknown', this.wishlistId);
       this.ws?.close();
     };
   }
