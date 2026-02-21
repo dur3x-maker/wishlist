@@ -11,7 +11,7 @@ export function useWishlistDetail(wishlistId: string) {
   const query = useQuery<Wishlist>({
     queryKey: ['wishlist', wishlistId],
     queryFn: () => getWishlist(wishlistId),
-    staleTime: 30_000,
+    staleTime: 0,
   });
 
   useEffect(() => {
@@ -26,7 +26,13 @@ export function useWishlistDetail(wishlistId: string) {
         if (msg.event === 'item_created') {
           const exists = items.some((i) => i.id === updatedItem.id);
           items = exists ? items : [...items, updatedItem];
-        } else if (msg.event === 'item_updated' || msg.event === 'item_reserved' || msg.event === 'item_unreserved' || msg.event === 'contribution_added') {
+        } else if (
+          msg.event === 'item_updated' ||
+          msg.event === 'item_reserved' ||
+          msg.event === 'item_unreserved' ||
+          msg.event === 'contribution_added' ||
+          msg.event === 'contribution_created'
+        ) {
           items = items.map((i) => (i.id === updatedItem.id ? updatedItem : i));
         }
 

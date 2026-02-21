@@ -6,6 +6,7 @@ import WishlistDetailScreen from '../screens/WishlistDetailScreen';
 import ItemDetailScreen from '../screens/ItemDetailScreen';
 import CreateWishlistScreen from '../screens/CreateWishlistScreen';
 import CreateItemScreen from '../screens/CreateItemScreen';
+import EditItemScreen from '../screens/EditItemScreen';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 
@@ -55,6 +56,11 @@ export default function RootNavigator({isAuthenticated, onLogin, onLogout}: Prop
         name="CreateItem"
         component={CreateItemScreen}
         options={{title: 'Add Item'}}
+      />
+      <Stack.Screen
+        name="EditItem"
+        component={EditItemScreen}
+        options={{title: 'Edit Item'}}
       />
     </Stack.Navigator>
   );

@@ -14,6 +14,13 @@ import {GoogleSignin} from '@react-native-google-signin/google-signin';
 import {login, googleAuth} from '../api/auth';
 import type {LoginScreenProps} from '../navigation/types';
 
+GoogleSignin.configure({
+  iosClientId: '701578950612-pkvl1pr8595u4ocskjumir7ss71c18v1.apps.googleusercontent.com',
+  webClientId: '701578950612-95r0mc8e22rsh4ameih9sjd7bo8spj9j.apps.googleusercontent.com',
+  offlineAccess: true,
+  scopes: ['profile', 'email'],
+});
+
 interface Props extends LoginScreenProps {
   onLogin: () => void;
 }
@@ -45,20 +52,28 @@ export default function LoginScreen({navigation, onLogin}: Props) {
     setGoogleLoading(true);
     try {
       await GoogleSignin.hasPlayServices();
-      const userInfo = await GoogleSignin.signIn();
-      const serverAuthCode = userInfo?.data?.serverAuthCode;
+      const response = await GoogleSignin.signIn();
+
+      // User cancelled — silently ignore
+      if (response?.type === 'cancelled') {
+        return;
+      }
+
+      const serverAuthCode = response?.data?.serverAuthCode;
       if (!serverAuthCode) {
-        console.error('Google Sign-In: no serverAuthCode returned', userInfo);
-        Alert.alert('Error', 'Failed to get Google auth code');
+        console.error('Google Sign-In: no serverAuthCode on success response', response);
+        Alert.alert('Error', 'Failed to get Google auth code. Check Google config.');
         return;
       }
       await googleAuth(serverAuthCode, '');
       onLogin();
     } catch (e: any) {
-      console.error('Google login failed', e);
-      if (e?.code !== 'SIGN_IN_CANCELLED') {
-        Alert.alert('Google login failed', e.message ?? 'Unknown error');
+      // Also guard against thrown cancellation (older SDK versions)
+      if (e?.code === 'SIGN_IN_CANCELLED' || e?.code === 'SIGN_IN_REQUIRED') {
+        return;
       }
+      console.error('Google login failed', e);
+      Alert.alert('Google login failed', e.message ?? 'Unknown error');
     } finally {
       setGoogleLoading(false);
     }

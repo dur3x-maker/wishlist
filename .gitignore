@@ -13,3 +13,4 @@ build/
 pgdata/
 .DS_Store
 Thumbs.db
+uploads/

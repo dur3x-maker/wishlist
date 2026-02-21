@@ -4,15 +4,29 @@ export const BASE_URL = 'https://wishlist-esls.onrender.com';
 export const WS_BASE_URL = 'wss://wishlist-esls.onrender.com';
 export const WEB_BASE_URL = 'https://wishlist-ecru-one.vercel.app';
 
+// Diagnostic: test raw connectivity (deferred to avoid racing RN bridge init)
+export async function pingBackend(): Promise<void> {
+  const pingUrl = `${BASE_URL}/api/health`;
+  console.log('[NET DIAG] PINGING:', pingUrl);
+  try {
+    const r = await fetch(pingUrl, {method: 'GET'});
+    console.log('[NET DIAG] PING OK, status:', r.status);
+  } catch (e: any) {
+    console.error('[NET DIAG] PING FAILED:', e?.name, e?.message, e);
+  }
+}
+
 export async function apiFetch<T>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
-  console.log('[apiFetch] →', options.method ?? 'GET', path);
+  const fullUrl = `${BASE_URL}${path}`;
+  console.log('[apiFetch] →', options.method ?? 'GET', fullUrl);
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 10000);
+  const timeout = setTimeout(() => controller.abort(), 30000);
   try {
     const token = await AsyncStorage.getItem('access_token');
+    console.log('[apiFetch] token:', token ? `Bearer ${token.slice(0, 8)}…` : 'NONE');
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       ...(options.headers as Record<string, string>),
@@ -20,14 +34,15 @@ export async function apiFetch<T>(
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
-    const res = await fetch(`${BASE_URL}${path}`, {
+    const res = await fetch(fullUrl, {
       ...options,
       headers,
       signal: controller.signal,
     });
-    console.log('[apiFetch] ←', res.status, path);
+    console.log('[apiFetch] ←', res.status, fullUrl);
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
+      console.error('[apiFetch] ERROR body:', JSON.stringify(body), 'status:', res.status, 'url:', fullUrl);
       throw new ApiError(res.status, body?.detail ?? 'Request failed');
     }
     if (res.status === 204) {
@@ -44,7 +59,7 @@ export async function apiFetch<T>(
       console.error('[apiFetch] timeout', path);
       throw new ApiError(0, 'Request timed out');
     }
-    console.error('[apiFetch] error', path, e);
+    console.error('[apiFetch] error', path, 'type:', e?.name, 'msg:', e?.message, e);
     throw e;
   } finally {
     clearTimeout(timeout);

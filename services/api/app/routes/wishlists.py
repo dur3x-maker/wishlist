@@ -37,7 +37,7 @@ def _compute_status(item: Item, wl: Wishlist | None = None) -> str:
     return item.status.value if hasattr(item.status, "value") else item.status
 
 
-def _item_to_response(item: Item, is_owner: bool, wl: Wishlist | None = None) -> dict:
+def _item_to_response(item: Item, is_owner: bool, wl: Wishlist | None = None, current_user: User | None = None) -> dict:
     total_contributed = sum(c.amount_cents for c in item.contributions)
     reservations = []
     contributions = []
@@ -55,6 +55,13 @@ def _item_to_response(item: Item, is_owner: bool, wl: Wishlist | None = None) ->
             }
             for c in item.contributions
         ]
+    reserved_by_current_user = False
+    if current_user and item.reservations:
+        uid = str(current_user.id)
+        for r in item.reservations:
+            if r.reserver_user_id is not None and str(r.reserver_user_id) == uid:
+                reserved_by_current_user = True
+                break
     return {
         "id": str(item.id),
         "wishlist_id": str(item.wishlist_id),
@@ -65,6 +72,8 @@ def _item_to_response(item: Item, is_owner: bool, wl: Wishlist | None = None) ->
         "image_url": item.image_url,
         "status": _compute_status(item, wl),
         "reserved": item.reserved,
+        "is_reserved": item.reserved,
+        "reserved_by_current_user": reserved_by_current_user,
         "reserved_at": item.reserved_at.isoformat() if item.reserved_at else None,
         "created_at": item.created_at.isoformat(),
         "total_contributed": total_contributed,
@@ -73,7 +82,7 @@ def _item_to_response(item: Item, is_owner: bool, wl: Wishlist | None = None) ->
     }
 
 
-def _wishlist_to_response(wl: Wishlist, is_owner: bool) -> dict:
+def _wishlist_to_response(wl: Wishlist, is_owner: bool, current_user: User | None = None) -> dict:
     return {
         "id": str(wl.id),
         "owner_user_id": str(wl.owner_user_id),
@@ -83,7 +92,7 @@ def _wishlist_to_response(wl: Wishlist, is_owner: bool) -> dict:
         "is_public": wl.is_public,
         "deadline": wl.deadline.isoformat() if wl.deadline else None,
         "created_at": wl.created_at.isoformat(),
-        "items": [_item_to_response(i, is_owner, wl) for i in wl.items],
+        "items": [_item_to_response(i, is_owner, wl, current_user) for i in wl.items],
     }
 
 
@@ -228,4 +237,4 @@ async def public_get_wishlist(
     if not wl:
         raise HTTPException(status_code=404, detail="Wishlist not found or not public")
     is_owner = user is not None and wl.owner_user_id == user.id
-    return _wishlist_to_response(wl, is_owner=is_owner)
+    return _wishlist_to_response(wl, is_owner=is_owner, current_user=user)

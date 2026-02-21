@@ -20,6 +20,7 @@ import {WEB_BASE_URL} from '../api/client';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import type {RootStackParamList} from '../navigation/types';
 import type {Item} from '../types';
+import {resolveImageUrl} from '../utils/imageUrl';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'WishlistDetail'>;
 
@@ -208,9 +209,9 @@ export default function WishlistDetailScreen({route, navigation}: Props) {
         style={styles.card}
         activeOpacity={0.7}
         onPress={() => navigation.navigate('ItemDetail', {wishlistId, itemId: item.id})}>
-        {item.image_url ? (
+        {resolveImageUrl(item.image_url) ? (
           <Image
-            source={{uri: item.image_url}}
+            source={{uri: resolveImageUrl(item.image_url)!}}
             style={styles.cardImage}
             resizeMode="cover"
           />

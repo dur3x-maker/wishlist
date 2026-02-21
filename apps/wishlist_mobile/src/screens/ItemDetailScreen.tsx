@@ -10,12 +10,14 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import {useQueryClient} from '@tanstack/react-query';
+import {useFocusEffect} from '@react-navigation/native';
+import {useWishlistDetail} from '../hooks/useWishlistDetail';
 import {useReserve} from '../hooks/useReserve';
 import {useAuthContext} from '../hooks/AuthContext';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import type {RootStackParamList} from '../navigation/types';
-import type {Wishlist, Item} from '../types';
+import type {Item} from '../types';
+import {resolveImageUrl} from '../utils/imageUrl';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ItemDetail'>;
 
@@ -26,12 +28,17 @@ const STATUS_COLORS: Record<string, string> = {
 };
 const DEFAULT_STATUS_COLOR = '#9ca3af';
 
-export default function ItemDetailScreen({route}: Props) {
+export default function ItemDetailScreen({route, navigation}: Props) {
   const {wishlistId, itemId} = route.params;
   const {user} = useAuthContext();
-  const queryClient = useQueryClient();
-  const wishlist = queryClient.getQueryData<Wishlist>(['wishlist', wishlistId]);
+  const {data: wishlist, refetch} = useWishlistDetail(wishlistId);
   const item = wishlist?.items.find((i: Item) => i.id === itemId);
+
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch]),
+  );
   const {reserve, unreserve} = useReserve(
     wishlistId,
     wishlist?.access_token ?? '',
@@ -41,6 +48,10 @@ export default function ItemDetailScreen({route}: Props) {
     () => !!user && !!wishlist && wishlist.owner_user_id === user.id,
     [user, wishlist],
   );
+
+  const handleEdit = useCallback(() => {
+    navigation.navigate('EditItem', {wishlistId, itemId});
+  }, [navigation, wishlistId, itemId]);
 
   const handleOpenUrl = useCallback(() => {
     if (item?.url) {
@@ -107,8 +118,8 @@ export default function ItemDetailScreen({route}: Props) {
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
-      {item.image_url ? (
-        <Image source={{uri: item.image_url}} style={styles.image} resizeMode="cover" />
+      {resolveImageUrl(item.image_url) ? (
+        <Image source={{uri: resolveImageUrl(item.image_url)!}} style={styles.image} resizeMode="cover" />
       ) : null}
 
       <View style={styles.header}>
@@ -119,6 +130,14 @@ export default function ItemDetailScreen({route}: Props) {
           </Text>
         </View>
       </View>
+
+      {isOwner && (
+        <View style={styles.editSection}>
+          <TouchableOpacity style={styles.editBtn} onPress={handleEdit}>
+            <Text style={styles.editBtnText}>Edit Item</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {item.url ? (
         <TouchableOpacity style={styles.urlRow} onPress={handleOpenUrl}>
@@ -270,4 +289,13 @@ const styles = StyleSheet.create({
   },
   contributorName: {fontSize: 14, color: '#333'},
   contributionAmount: {fontSize: 14, color: '#555', fontWeight: '500'},
+  editSection: {paddingHorizontal: 16, marginBottom: 8},
+  editBtn: {
+    borderWidth: 1.5,
+    borderColor: '#6C63FF',
+    borderRadius: 8,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  editBtnText: {color: '#6C63FF', fontWeight: '600', fontSize: 15},
 });

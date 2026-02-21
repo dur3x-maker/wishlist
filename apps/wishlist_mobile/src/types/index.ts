@@ -77,7 +77,8 @@ export type WSEventName =
   | 'item_updated'
   | 'item_reserved'
   | 'item_unreserved'
-  | 'contribution_added';
+  | 'contribution_added'
+  | 'contribution_created';
 
 export interface WSMessage {
   event: WSEventName;
