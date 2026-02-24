@@ -135,6 +135,7 @@ export default function CreateItemScreen({route, navigation}: Props) {
             onBlur={handleScrape}
           />
           <Pressable
+            android_ripple={null}
             style={({pressed}) => [styles.scrapeBtn, pressed && styles.pressedState]}
             onPress={handleScrape}
             disabled={scraping || !url.trim()}>
@@ -190,6 +191,7 @@ export default function CreateItemScreen({route, navigation}: Props) {
             keyboardType="url"
           />
           <Pressable
+            android_ripple={null}
             style={({pressed}) => [styles.pickBtn, pressed && styles.pressedState]}
             onPress={handlePickImage}>
             <Text style={styles.pickBtnText}>Gallery</Text>
@@ -204,6 +206,7 @@ export default function CreateItemScreen({route, navigation}: Props) {
         ) : null}
 
         <Pressable
+          android_ripple={null}
           style={({pressed}) => [styles.button, pressed && styles.pressedState]}
           onPress={handleCreate}
           disabled={loading}>

@@ -9,7 +9,9 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
 } from 'react-native';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {GoogleSignin} from '@react-native-google-signin/google-signin';
 import {login, googleAuth} from '../api/auth';
 import {colors, spacing, typography, borderRadius} from '../theme';
@@ -84,73 +86,89 @@ export default function LoginScreen({navigation, onLogin}: Props) {
     navigation.navigate('Register');
   }, [navigation]);
 
+  const insets = useSafeAreaInsets();
+
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={styles.flex1}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <Text style={styles.title}>Wishlist</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        autoCapitalize="none"
-        keyboardType="email-address"
-        value={email}
-        onChangeText={setEmail}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
-      <Pressable
-        style={({pressed}) => [styles.button, pressed && styles.pressedState]}
-        onPress={handleLogin}
-        disabled={loading || googleLoading}>
-        {loading ? (
-          <ActivityIndicator color={colors.white} />
-        ) : (
-          <Text style={styles.buttonText}>Sign In</Text>
-        )}
-      </Pressable>
+      <ScrollView
+        contentContainerStyle={[
+          styles.container,
+          {paddingTop: insets.top, paddingBottom: insets.bottom + spacing.xl},
+        ]}
+        keyboardShouldPersistTaps="handled"
+        bounces={false}>
+        <Text style={styles.title}>Wishlist</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Email"
+          placeholderTextColor={colors.text.tertiary}
+          autoCapitalize="none"
+          keyboardType="email-address"
+          value={email}
+          onChangeText={setEmail}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Password"
+          placeholderTextColor={colors.text.tertiary}
+          secureTextEntry
+          value={password}
+          onChangeText={setPassword}
+        />
+        <Pressable
+          android_ripple={null}
+          style={({pressed}) => [styles.button, pressed && styles.pressedState]}
+          onPress={handleLogin}
+          disabled={loading || googleLoading}>
+          {loading ? (
+            <ActivityIndicator color={colors.white} />
+          ) : (
+            <Text style={styles.buttonText}>Sign In</Text>
+          )}
+        </Pressable>
 
-      <View style={styles.divider}>
-        <View style={styles.dividerLine} />
-        <Text style={styles.dividerText}>or</Text>
-        <View style={styles.dividerLine} />
-      </View>
-      <Pressable
-        style={({pressed}) => [styles.googleButton, pressed && styles.pressedState]}
-        onPress={handleGoogleLogin}
-        disabled={loading || googleLoading}>
-        {googleLoading ? (
-          <ActivityIndicator color={colors.text.primary} />
-        ) : (
-          <Text style={styles.googleButtonText}>Sign in with Google</Text>
-        )}
-      </Pressable>
+        <View style={styles.divider}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>or</Text>
+          <View style={styles.dividerLine} />
+        </View>
+        <Pressable
+          android_ripple={null}
+          style={({pressed}) => [styles.googleButton, pressed && styles.pressedState]}
+          onPress={handleGoogleLogin}
+          disabled={loading || googleLoading}>
+          {googleLoading ? (
+            <ActivityIndicator color={colors.text.primary} />
+          ) : (
+            <Text style={styles.googleButtonText}>Sign in with Google</Text>
+          )}
+        </Pressable>
 
-      <Pressable
-        style={({pressed}) => [styles.link, pressed && {opacity: 0.6}]}
-        onPress={navigateToRegister}>
-        <Text style={styles.linkText}>Don't have an account? Register</Text>
-      </Pressable>
+        <Pressable
+          android_ripple={null}
+          style={({pressed}) => [styles.link, pressed && {opacity: 0.6}]}
+          onPress={navigateToRegister}>
+          <Text style={styles.linkText}>Don't have an account? Register</Text>
+        </Pressable>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  flex1: {flex: 1, backgroundColor: colors.white},
   container: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: 'center',
-    padding: spacing.xxl,
+    paddingHorizontal: spacing.xxl,
     backgroundColor: colors.white,
   },
   title: {
     fontSize: 32,
     fontWeight: '700' as const,
-    marginBottom: spacing.xxxl,
+    marginBottom: spacing.xxl,
     textAlign: 'center',
     color: colors.text.primary,
   },

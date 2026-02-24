@@ -149,12 +149,14 @@ export default function WishlistDetailScreen({route, navigation}: Props) {
         <View style={styles.headerRight}>
           {wishlist?.access_token ? (
             <Pressable
+              android_ripple={null}
               onPress={handleShare}
               style={({pressed}) => pressed && styles.headerPressed}>
               <Text style={styles.headerBtn}>Share</Text>
             </Pressable>
           ) : null}
           <Pressable
+            android_ripple={null}
             onPress={handleAddItem}
             style={({pressed}) => pressed && styles.headerPressed}>
             <Text style={styles.headerPlus}>+</Text>
@@ -251,6 +253,7 @@ export default function WishlistDetailScreen({route, navigation}: Props) {
       <View style={styles.center}>
         <Text style={styles.errorText}>Failed to load wishlist</Text>
         <Pressable
+          android_ripple={null}
           onPress={handleRetry}
           style={({pressed}) => [styles.retryBtn, pressed && styles.pressedState]}>
           <Text style={styles.retryText}>Retry</Text>
@@ -270,6 +273,7 @@ export default function WishlistDetailScreen({route, navigation}: Props) {
 
     return (
       <Pressable
+        android_ripple={null}
         style={({pressed}) => [styles.card, pressed && styles.pressedState]}
         onPress={() => navigation.navigate('ItemDetail', {wishlistId, itemId: item.id})}>
         {resolveImageUrl(item.image_url) ? (
@@ -278,7 +282,11 @@ export default function WishlistDetailScreen({route, navigation}: Props) {
             style={styles.cardImage}
             resizeMode="cover"
           />
-        ) : null}
+        ) : (
+          <View style={styles.cardImageFallback}>
+            <Text style={styles.cardImageFallbackIcon}>🖼️</Text>
+          </View>
+        )}
         <View style={styles.cardBody}>
           <View style={styles.cardTop}>
             <Text style={styles.itemTitle} numberOfLines={2}>
@@ -304,6 +312,7 @@ export default function WishlistDetailScreen({route, navigation}: Props) {
 
           {showReserveButton && (
             <Pressable
+              android_ripple={null}
               style={({pressed}) => [
                 styles.reserveBtn,
                 isReservedByMe && styles.reserveBtnActive,
@@ -350,6 +359,13 @@ export default function WishlistDetailScreen({route, navigation}: Props) {
             {wishlist.items.length > 0 && <SummaryBlock items={wishlist.items} />}
           </>
         }
+        ListFooterComponent={
+          wishlist.items.length > 0 && wishlist.items.length <= 2 ? (
+            <View style={styles.listFooter}>
+              <Text style={styles.listFooterText}>Tap + to add more items</Text>
+            </View>
+          ) : null
+        }
         ListEmptyComponent={
           <View style={styles.emptyCenter}>
             <View style={styles.emptyIconCircle}>
@@ -358,6 +374,7 @@ export default function WishlistDetailScreen({route, navigation}: Props) {
             <Text style={styles.emptyText}>No items yet</Text>
             <Text style={styles.emptyHint}>Add your first item to get started</Text>
             <Pressable
+              android_ripple={null}
               style={({pressed}) => [styles.emptyCta, pressed && styles.pressedState]}
               onPress={handleAddItem}>
               <Text style={styles.emptyCtaText}>+ Add your first item</Text>
@@ -368,6 +385,7 @@ export default function WishlistDetailScreen({route, navigation}: Props) {
 
       {wishlist.items.length > 0 && (
         <Pressable
+          android_ripple={null}
           style={({pressed}) => [styles.fab, pressed && styles.fabPressed]}
           onPress={handleAddItem}>
           <Text style={styles.fabText}>+</Text>
@@ -393,11 +411,13 @@ export default function WishlistDetailScreen({route, navigation}: Props) {
             />
             <View style={styles.modalActions}>
               <Pressable
+                android_ripple={null}
                 style={({pressed}) => [styles.modalCancel, pressed && styles.pressedState]}
                 onPress={closeModal}>
                 <Text style={styles.modalCancelText}>Cancel</Text>
               </Pressable>
               <Pressable
+                android_ripple={null}
                 style={({pressed}) => [styles.modalConfirm, pressed && styles.pressedState]}
                 onPress={submitReserve}
                 disabled={reserve.isPending}>
@@ -465,6 +485,17 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   cardImage: {width: '100%', height: 140, backgroundColor: colors.background.secondary},
+  cardImageFallback: {
+    width: '100%',
+    height: 100,
+    backgroundColor: colors.background.tertiary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cardImageFallbackIcon: {
+    fontSize: 32,
+    opacity: 0.4,
+  },
   cardBody: {padding: spacing.lg},
   cardTop: {
     flexDirection: 'row',
@@ -613,4 +644,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalConfirmText: {color: colors.white, fontWeight: '600' as const},
+  listFooter: {
+    alignItems: 'center',
+    paddingVertical: spacing.xxxl,
+  },
+  listFooterText: {
+    ...typography.caption,
+    color: colors.text.tertiary,
+  },
 });

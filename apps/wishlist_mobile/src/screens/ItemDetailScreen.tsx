@@ -159,6 +159,7 @@ export default function ItemDetailScreen({route, navigation}: Props) {
       {isOwner && (
         <View style={styles.editSection}>
           <Pressable
+            android_ripple={null}
             style={({pressed}) => [styles.editBtn, pressed && styles.pressedState]}
             onPress={handleEdit}>
             <Text style={styles.editBtnText}>Edit Item</Text>
@@ -168,6 +169,7 @@ export default function ItemDetailScreen({route, navigation}: Props) {
 
       {item.url ? (
         <Pressable
+          android_ripple={null}
           style={({pressed}) => [styles.urlRow, pressed && {opacity: 0.6}]}
           onPress={handleOpenUrl}>
           <Text style={styles.urlText} numberOfLines={1}>
@@ -205,6 +207,7 @@ export default function ItemDetailScreen({route, navigation}: Props) {
       {showReserveButton && (
         <View style={styles.reserveSection}>
           <Pressable
+            android_ripple={null}
             style={({pressed}) => [
               styles.reserveBtn,
               isReservedByMe && styles.reserveBtnActive,

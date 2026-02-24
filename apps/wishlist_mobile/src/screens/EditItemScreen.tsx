@@ -171,6 +171,7 @@ export default function EditItemScreen({route, navigation}: Props) {
             keyboardType="url"
           />
           <Pressable
+            android_ripple={null}
             style={({pressed}) => [styles.pickBtn, pressed && styles.pressedState]}
             onPress={handlePickImage}>
             <Text style={styles.pickBtnText}>Gallery</Text>
@@ -185,6 +186,7 @@ export default function EditItemScreen({route, navigation}: Props) {
         ) : null}
 
         <Pressable
+          android_ripple={null}
           style={({pressed}) => [styles.button, pressed && styles.pressedState]}
           onPress={handleSave}
           disabled={loading}>

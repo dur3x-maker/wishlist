@@ -101,6 +101,7 @@ export default function CreateWishlistScreen({navigation}: Props) {
 
         <Text style={styles.label}>Deadline (optional)</Text>
         <Pressable
+          android_ripple={null}
           style={({pressed}) => [styles.dateButton, pressed && styles.pressedState]}
           onPress={() => setShowDatePicker(true)}>
           <Text style={deadline ? styles.dateText : styles.datePlaceholder}>
@@ -109,6 +110,7 @@ export default function CreateWishlistScreen({navigation}: Props) {
         </Pressable>
         {deadline && (
           <Pressable
+            android_ripple={null}
             style={({pressed}) => [styles.clearButton, pressed && {opacity: 0.6}]}
             onPress={() => setDeadline(null)}>
             <Text style={styles.clearButtonText}>Clear deadline</Text>
@@ -129,6 +131,7 @@ export default function CreateWishlistScreen({navigation}: Props) {
         )}
 
         <Pressable
+          android_ripple={null}
           style={({pressed}) => [styles.button, pressed && styles.pressedState]}
           onPress={handleCreate}
           disabled={loading}>

@@ -21,6 +21,7 @@ export default function LandingScreen({navigation}) {
 
         <View style={styles.actions}>
           <Pressable
+            android_ripple={null}
             style={({pressed}) => [
               styles.primaryButton,
               pressed && styles.buttonPressed,
@@ -30,6 +31,7 @@ export default function LandingScreen({navigation}) {
           </Pressable>
 
           <Pressable
+            android_ripple={null}
             style={({pressed}) => [
               styles.secondaryButton,
               pressed && styles.secondaryPressed,

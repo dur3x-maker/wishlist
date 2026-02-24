@@ -66,6 +66,7 @@ export default function RegisterScreen({onLogin}: Props) {
         onChangeText={setPassword}
       />
       <Pressable
+        android_ripple={null}
         style={({pressed}) => [styles.button, pressed && styles.pressedState]}
         onPress={handleRegister}
         disabled={loading}>

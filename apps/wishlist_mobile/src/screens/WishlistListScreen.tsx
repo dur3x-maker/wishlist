@@ -1,4 +1,4 @@
-import React, {useCallback, useState, useEffect, useRef} from 'react';
+import React, {useCallback, useState, useEffect, useRef, memo} from 'react';
 import {
   View,
   Text,
@@ -18,7 +18,7 @@ import {WEB_BASE_URL} from '../api/client';
 import {ApiError} from '../api/client';
 import {useAuthContext} from '../hooks/AuthContext';
 import {colors, spacing, typography, shadows, borderRadius} from '../theme';
-import {getFullCountdown, formatDeadlineDate, getTotalDaysLeft, isExpired} from '../utils/countdown';
+import {getFullCountdown, isExpired} from '../utils/countdown';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import type {RootStackParamList} from '../navigation/types';
 import type {WishlistListItem} from '../types';
@@ -58,6 +58,7 @@ export default function WishlistListScreen({navigation, onLogout}: Props) {
     navigation.setOptions({
       headerRight: () => (
         <Pressable
+          android_ripple={null}
           onPress={onLogout}
           style={({pressed}) => [styles.headerMarginR, pressed && styles.headerPressed]}>
           <Text style={styles.headerBtn}>Logout</Text>
@@ -65,6 +66,7 @@ export default function WishlistListScreen({navigation, onLogout}: Props) {
       ),
       headerLeft: () => (
         <Pressable
+          android_ripple={null}
           onPress={handleCreate}
           style={({pressed}) => [styles.headerMarginL, pressed && styles.headerPressed]}>
           <Text style={styles.headerPlus}>+</Text>
@@ -88,9 +90,9 @@ export default function WishlistListScreen({navigation, onLogout}: Props) {
                 await deleteWishlist(id);
                 queryClient.invalidateQueries({queryKey: ['wishlists']});
               } catch (e: any) {
-                console.error('Delete wishlist failed', e);
+                // Show ONE alert only — do not propagate further
                 const status = e instanceof ApiError ? e.status : 0;
-                if (status === 500) {
+                if (status === 500 || status === 400 || status === 409) {
                   Alert.alert(
                     'Cannot delete',
                     'This wishlist may contain items. Delete all items first, then try again.',
@@ -131,6 +133,7 @@ export default function WishlistListScreen({navigation, onLogout}: Props) {
       <View style={styles.center}>
         <Text style={styles.errorText}>Failed to load wishlists</Text>
         <Pressable
+          android_ripple={null}
           onPress={handleRetry}
           style={({pressed}) => [styles.retryBtn, pressed && styles.pressedCard]}>
           <Text style={styles.retryText}>Retry</Text>
@@ -168,6 +171,7 @@ export default function WishlistListScreen({navigation, onLogout}: Props) {
             Create a wishlist to organize your wishes and share them with friends
           </Text>
           <Pressable
+            android_ripple={null}
             style={({pressed}) => [styles.primaryButton, pressed && styles.pressedCard]}
             onPress={handleCreate}>
             <Text style={styles.primaryButtonText}>+ Add your first wishlist</Text>
@@ -180,8 +184,16 @@ export default function WishlistListScreen({navigation, onLogout}: Props) {
             keyExtractor={keyExtractor}
             renderItem={renderItem}
             contentContainerStyle={styles.list}
+            ListFooterComponent={
+              (data?.length ?? 0) > 0 && (data?.length ?? 0) <= 2 ? (
+                <View style={styles.listFooter}>
+                  <Text style={styles.listFooterText}>Tap + to add more wishlists</Text>
+                </View>
+              ) : null
+            }
           />
           <Pressable
+            android_ripple={null}
             style={({pressed}) => [styles.fab, pressed && styles.fabPressed]}
             onPress={handleCreate}>
             <Text style={styles.fabText}>+</Text>
@@ -192,7 +204,7 @@ export default function WishlistListScreen({navigation, onLogout}: Props) {
   );
 }
 
-function SwipeableCard({item, onPress, onDelete, onShare, refreshKey}: {
+const SwipeableCard = memo(function SwipeableCard({item, onPress, onDelete, onShare, refreshKey}: {
   item: WishlistListItem;
   onPress: () => void;
   onDelete: () => void;
@@ -247,22 +259,13 @@ function SwipeableCard({item, onPress, onDelete, onShare, refreshKey}: {
   ).current;
 
   const countdown = getFullCountdown(item.deadline);
-  const deadlineDate = formatDeadlineDate(item.deadline);
-  const daysLeft = getTotalDaysLeft(item.deadline);
   const expired = isExpired(item.deadline);
-
-  const deadlineColor = expired
-    ? colors.text.tertiary
-    : daysLeft < 3
-    ? colors.status.error
-    : daysLeft <= 7
-    ? colors.status.warning
-    : colors.primary;
 
   return (
     <View style={styles.swipeContainer}>
       <View style={styles.deleteBackground}>
         <Pressable
+          android_ripple={null}
           style={styles.deleteButton}
           onPress={() => {
             Animated.spring(translateX, {
@@ -278,6 +281,7 @@ function SwipeableCard({item, onPress, onDelete, onShare, refreshKey}: {
         style={[styles.cardWrapper, {transform: [{translateX}], opacity: fadeAnim}]}
         {...panResponder.panHandlers}>
         <Pressable
+          android_ripple={null}
           style={({pressed}) => [styles.card, pressed && !swiping && styles.pressedCard]}
           onPress={onPress}
           disabled={swiping}>
@@ -288,21 +292,22 @@ function SwipeableCard({item, onPress, onDelete, onShare, refreshKey}: {
                 {item.description}
               </Text>
             ) : null}
-            {item.deadline && (
-              <View style={styles.deadlineSection}>
-                <Text style={[styles.deadlineDate, {color: deadlineColor}]}>
-                  Due {deadlineDate}
-                </Text>
-                <Text style={[styles.countdownText, {color: deadlineColor}]}>
-                  {countdown}
-                </Text>
-              </View>
+            {item.deadline && !expired && (
+              <Text style={styles.deadlineBadge}>
+                ⏳ {countdown}
+              </Text>
+            )}
+            {item.deadline && expired && (
+              <Text style={styles.deadlineExpired}>
+                Expired
+              </Text>
             )}
             <View style={styles.metaRow}>
               <Text style={styles.cardMeta}>
                 {item.item_count} item{item.item_count !== 1 ? 's' : ''}
               </Text>
               <Pressable
+                android_ripple={null}
                 onPress={onShare}
                 style={({pressed}) => pressed && styles.headerPressed}>
                 <Text style={styles.shareText}>Share</Text>
@@ -313,7 +318,7 @@ function SwipeableCard({item, onPress, onDelete, onShare, refreshKey}: {
       </Animated.View>
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -406,17 +411,17 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     marginBottom: spacing.sm,
   },
-  deadlineSection: {
-    marginBottom: spacing.sm,
-    gap: 2,
-  },
-  deadlineDate: {
-    ...typography.caption,
-    fontWeight: '500' as const,
-  },
-  countdownText: {
-    ...typography.caption,
+  deadlineBadge: {
+    fontSize: 12,
+    color: colors.primary,
     fontWeight: '600' as const,
+    marginBottom: spacing.sm,
+  },
+  deadlineExpired: {
+    fontSize: 12,
+    color: colors.text.tertiary,
+    fontWeight: '500' as const,
+    marginBottom: spacing.sm,
   },
   metaRow: {
     flexDirection: 'row',
@@ -516,5 +521,13 @@ const styles = StyleSheet.create({
     fontSize: 28,
     color: colors.white,
     lineHeight: 30,
+  },
+  listFooter: {
+    alignItems: 'center',
+    paddingVertical: spacing.xxxl,
+  },
+  listFooterText: {
+    ...typography.caption,
+    color: colors.text.tertiary,
   },
 });
