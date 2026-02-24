@@ -1,10 +1,11 @@
 import React from 'react';
-import {View, Text, StyleSheet, Pressable} from 'react-native';
-import {colors, spacing, typography, shadows, borderRadius} from '../theme';
+import {View, Text, StyleSheet} from 'react-native';
+import {GradientBackground, PrimaryButton, SecondaryButton} from '../components';
+import {colors, spacing} from '../theme';
 
 export default function LandingScreen({navigation}) {
   return (
-    <View style={styles.container}>
+    <GradientBackground>
       <View style={styles.content}>
         <View style={styles.hero}>
           <Text style={styles.heroTitle}>
@@ -20,25 +21,15 @@ export default function LandingScreen({navigation}) {
         </View>
 
         <View style={styles.actions}>
-          <Pressable
-            android_ripple={null}
-            style={({pressed}) => [
-              styles.primaryButton,
-              pressed && styles.buttonPressed,
-            ]}
-            onPress={() => navigation.navigate('Register')}>
-            <Text style={styles.primaryButtonText}>Get started free</Text>
-          </Pressable>
-
-          <Pressable
-            android_ripple={null}
-            style={({pressed}) => [
-              styles.secondaryButton,
-              pressed && styles.secondaryPressed,
-            ]}
-            onPress={() => navigation.navigate('Login')}>
-            <Text style={styles.secondaryButtonText}>Log in</Text>
-          </Pressable>
+          <PrimaryButton
+            title="Get started free"
+            onPress={() => navigation.navigate('Register')}
+            style={styles.actionBtn}
+          />
+          <SecondaryButton
+            title="Log in"
+            onPress={() => navigation.navigate('Login')}
+          />
         </View>
 
         <View style={styles.features}>
@@ -56,15 +47,11 @@ export default function LandingScreen({navigation}) {
           </View>
         </View>
       </View>
-    </View>
+    </GradientBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.white,
-  },
   content: {
     flex: 1,
     justifyContent: 'center',
@@ -76,26 +63,26 @@ const styles = StyleSheet.create({
   },
   heroTitle: {
     fontSize: 52,
-    fontWeight: '800',
-    color: colors.primary,
+    fontWeight: '900',
+    color: colors.white,
     textAlign: 'center',
-    letterSpacing: -1,
+    letterSpacing: -1.5,
     marginBottom: spacing.lg,
   },
   heroSubtitle: {
     fontSize: 22,
     fontWeight: '600',
-    color: colors.text.primary,
+    color: colors.text.secondary,
     textAlign: 'center',
     lineHeight: 30,
     marginBottom: spacing.lg,
   },
   heroAccent: {
-    color: colors.primary,
+    color: colors.accent,
   },
   heroBody: {
-    ...typography.body,
-    color: colors.text.secondary,
+    fontSize: 15,
+    color: colors.text.tertiary,
     textAlign: 'center',
     lineHeight: 24,
     paddingHorizontal: spacing.sm,
@@ -103,38 +90,8 @@ const styles = StyleSheet.create({
   actions: {
     marginBottom: 56,
   },
-  primaryButton: {
-    backgroundColor: colors.primary,
-    borderRadius: borderRadius.md,
-    paddingVertical: 18,
-    alignItems: 'center',
+  actionBtn: {
     marginBottom: spacing.md,
-    ...shadows.md,
-  },
-  primaryButtonText: {
-    ...typography.bodyBold,
-    color: colors.white,
-    fontSize: 17,
-  },
-  secondaryButton: {
-    borderRadius: borderRadius.md,
-    paddingVertical: 18,
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: colors.primary,
-  },
-  secondaryButtonText: {
-    ...typography.bodyBold,
-    color: colors.primary,
-    fontSize: 17,
-  },
-  buttonPressed: {
-    opacity: 0.92,
-    transform: [{scale: 0.98}],
-  },
-  secondaryPressed: {
-    opacity: 0.92,
-    transform: [{scale: 0.98}],
   },
   features: {
     flexDirection: 'row',
@@ -148,12 +105,12 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.accent,
     marginBottom: spacing.sm,
   },
   featureText: {
-    ...typography.caption,
-    color: colors.text.secondary,
+    fontSize: 12,
+    color: colors.text.tertiary,
     textAlign: 'center',
   },
 });

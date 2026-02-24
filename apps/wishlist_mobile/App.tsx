@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from 'react';
-import {StatusBar, useColorScheme} from 'react-native';
+import {StatusBar} from 'react-native';
 import {NavigationContainer} from '@react-navigation/native';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
@@ -19,7 +19,6 @@ const queryClient = new QueryClient({
 });
 
 function AppInner() {
-  const isDarkMode = useColorScheme() === 'dark';
   const {user, loading, reload, logout} = useAuthContext();
   const [showSplash, setShowSplash] = useState(true);
 
@@ -29,7 +28,7 @@ function AppInner() {
 
   return (
     <>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <NavigationContainer>
         <RootNavigator
           isAuthenticated={!!user}

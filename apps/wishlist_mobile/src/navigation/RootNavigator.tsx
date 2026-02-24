@@ -13,6 +13,14 @@ import RegisterScreen from '../screens/RegisterScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+const darkHeader = {
+  headerStyle: {backgroundColor: 'transparent'},
+  headerTransparent: true,
+  headerTintColor: '#FFFFFF',
+  headerTitleStyle: {color: '#FFFFFF', fontWeight: '700' as const},
+  headerShadowVisible: false,
+};
+
 interface Props {
   isAuthenticated: boolean;
   onLogin: () => void;
@@ -22,7 +30,7 @@ interface Props {
 export default function RootNavigator({isAuthenticated, onLogin, onLogout}: Props) {
   if (!isAuthenticated) {
     return (
-      <Stack.Navigator initialRouteName="Landing">
+      <Stack.Navigator initialRouteName="Landing" screenOptions={darkHeader}>
         <Stack.Screen name="Landing" component={LandingScreen} options={{headerShown: false}} />
         <Stack.Screen name="Login" options={{headerShown: false}}>
           {(props) => <LoginScreen {...props} onLogin={onLogin} />}
@@ -35,8 +43,8 @@ export default function RootNavigator({isAuthenticated, onLogin, onLogout}: Prop
   }
 
   return (
-    <Stack.Navigator>
-      <Stack.Screen name="Main" options={{title: 'My Wishlists'}}>
+    <Stack.Navigator screenOptions={darkHeader}>
+      <Stack.Screen name="Main" options={{title: 'My Wishlists', headerShown: false}}>
         {(props) => <WishlistListScreen {...props} onLogout={onLogout} />}
       </Stack.Screen>
       <Stack.Screen

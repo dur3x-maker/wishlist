@@ -11,14 +11,17 @@ import {
   Animated,
   PanResponder,
 } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import {useFocusEffect} from '@react-navigation/native';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useQuery, useQueryClient} from '@tanstack/react-query';
 import {listWishlists, deleteWishlist} from '../api/wishlists';
 import {WEB_BASE_URL} from '../api/client';
 import {ApiError} from '../api/client';
 import {useAuthContext} from '../hooks/AuthContext';
-import {colors, spacing, typography, shadows, borderRadius} from '../theme';
+import {colors, spacing, shadows, borderRadius} from '../theme';
 import {getFullCountdown, isExpired} from '../utils/countdown';
+import {GradientBackground, PrimaryButton} from '../components';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import type {RootStackParamList} from '../navigation/types';
 import type {WishlistListItem} from '../types';
@@ -30,6 +33,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Main'> & {
 export default function WishlistListScreen({navigation, onLogout}: Props) {
   const queryClient = useQueryClient();
   const {user} = useAuthContext();
+  const insets = useSafeAreaInsets();
   const [refreshKey, setRefreshKey] = useState(0);
   const {data, isLoading, isError, refetch} = useQuery<WishlistListItem[]>({
     queryKey: ['wishlists'],
@@ -53,27 +57,6 @@ export default function WishlistListScreen({navigation, onLogout}: Props) {
   const handleCreate = useCallback(() => {
     navigation.navigate('CreateWishlist');
   }, [navigation]);
-
-  React.useLayoutEffect(() => {
-    navigation.setOptions({
-      headerRight: () => (
-        <Pressable
-          android_ripple={null}
-          onPress={onLogout}
-          style={({pressed}) => [styles.headerMarginR, pressed && styles.headerPressed]}>
-          <Text style={styles.headerBtn}>Logout</Text>
-        </Pressable>
-      ),
-      headerLeft: () => (
-        <Pressable
-          android_ripple={null}
-          onPress={handleCreate}
-          style={({pressed}) => [styles.headerMarginL, pressed && styles.headerPressed]}>
-          <Text style={styles.headerPlus}>+</Text>
-        </Pressable>
-      ),
-    });
-  }, [navigation, onLogout, handleCreate]);
 
   const handleDelete = useCallback(
     (id: string, title: string) => {
@@ -122,23 +105,22 @@ export default function WishlistListScreen({navigation, onLogout}: Props) {
 
   if (isLoading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
+      <GradientBackground>
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={colors.accent} />
+        </View>
+      </GradientBackground>
     );
   }
 
   if (isError) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.errorText}>Failed to load wishlists</Text>
-        <Pressable
-          android_ripple={null}
-          onPress={handleRetry}
-          style={({pressed}) => [styles.retryBtn, pressed && styles.pressedCard]}>
-          <Text style={styles.retryText}>Retry</Text>
-        </Pressable>
-      </View>
+      <GradientBackground>
+        <View style={styles.center}>
+          <Text style={styles.errorText}>Failed to load wishlists</Text>
+          <PrimaryButton title="Retry" onPress={handleRetry} />
+        </View>
+      </GradientBackground>
     );
   }
 
@@ -155,11 +137,18 @@ export default function WishlistListScreen({navigation, onLogout}: Props) {
   );
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.welcomeText}>
-          Welcome, <Text style={styles.welcomeName}>{user?.display_name || 'there'}!</Text>
-        </Text>
+    <GradientBackground>
+      <View style={[styles.header, {paddingTop: insets.top + spacing.lg}]}>
+        <View>
+          <Text style={styles.welcomeText}>Welcome back,</Text>
+          <Text style={styles.welcomeName}>{user?.display_name || 'there'} ✨</Text>
+        </View>
+        <Pressable
+          android_ripple={null}
+          onPress={onLogout}
+          style={({pressed}) => [styles.logoutBtn, pressed && styles.pressed]}>
+          <Text style={styles.logoutText}>Logout</Text>
+        </Pressable>
       </View>
       {!hasWishlists ? (
         <View style={styles.emptyContainer}>
@@ -170,12 +159,7 @@ export default function WishlistListScreen({navigation, onLogout}: Props) {
           <Text style={styles.emptySubtitle}>
             Create a wishlist to organize your wishes and share them with friends
           </Text>
-          <Pressable
-            android_ripple={null}
-            style={({pressed}) => [styles.primaryButton, pressed && styles.pressedCard]}
-            onPress={handleCreate}>
-            <Text style={styles.primaryButtonText}>+ Add your first wishlist</Text>
-          </Pressable>
+          <PrimaryButton title="+ Add your first wishlist" onPress={handleCreate} />
         </View>
       ) : (
         <>
@@ -196,11 +180,15 @@ export default function WishlistListScreen({navigation, onLogout}: Props) {
             android_ripple={null}
             style={({pressed}) => [styles.fab, pressed && styles.fabPressed]}
             onPress={handleCreate}>
-            <Text style={styles.fabText}>+</Text>
+            <LinearGradient
+              colors={[colors.primary, colors.primaryLight]}
+              style={styles.fabGradient}>
+              <Text style={styles.fabText}>+</Text>
+            </LinearGradient>
           </Pressable>
         </>
       )}
-    </View>
+    </GradientBackground>
   );
 }
 
@@ -297,14 +285,14 @@ const SwipeableCard = memo(function SwipeableCard({item, onPress, onDelete, onSh
               </Text>
             ) : null}
             {item.deadline && !expired && (
-              <Text style={styles.deadlineBadge}>
-                ⏳ {countdown}
-              </Text>
+              <View style={styles.deadlinePill}>
+                <Text style={styles.deadlineBadge}>⏳ {countdown}</Text>
+              </View>
             )}
             {item.deadline && expired && (
-              <Text style={styles.deadlineExpired}>
-                Expired
-              </Text>
+              <View style={styles.expiredPill}>
+                <Text style={styles.deadlineExpired}>Expired</Text>
+              </View>
             )}
             <View style={styles.metaRow}>
               <Text style={styles.cardMeta}>
@@ -313,7 +301,7 @@ const SwipeableCard = memo(function SwipeableCard({item, onPress, onDelete, onSh
               <Pressable
                 android_ripple={null}
                 onPress={onShare}
-                style={({pressed}) => pressed && styles.headerPressed}>
+                style={({pressed}) => pressed && styles.pressed}>
                 <Text style={styles.shareText}>Share</Text>
               </Pressable>
             </View>
@@ -325,27 +313,39 @@ const SwipeableCard = memo(function SwipeableCard({item, onPress, onDelete, onSh
 });
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background.secondary,
-  },
   header: {
-    backgroundColor: colors.white,
     paddingHorizontal: spacing.xxl,
-    paddingVertical: spacing.xl,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.light,
+    paddingBottom: spacing.lg,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
   },
   welcomeText: {
-    ...typography.h3,
-    color: colors.text.primary,
+    fontSize: 15,
+    color: colors.text.tertiary,
   },
   welcomeName: {
-    color: colors.primary,
+    fontSize: 24,
+    fontWeight: '700' as const,
+    color: colors.white,
+    marginTop: 2,
+  },
+  logoutBtn: {
+    backgroundColor: colors.glass.bg,
+    borderWidth: 1,
+    borderColor: colors.glass.border,
+    borderRadius: borderRadius.full,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+  },
+  logoutText: {
+    fontSize: 13,
+    color: colors.text.secondary,
+    fontWeight: '600' as const,
   },
   list: {
     padding: spacing.lg,
-    paddingBottom: 80,
+    paddingBottom: 100,
     flexGrow: 1,
   },
   center: {
@@ -354,18 +354,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: spacing.xxxl,
   },
-  headerMarginR: {marginRight: spacing.xs, padding: spacing.xs},
-  headerMarginL: {marginLeft: spacing.xs, padding: spacing.xs},
-  headerPressed: {opacity: 0.6},
-  headerBtn: {
-    ...typography.small,
-    color: colors.primary,
-  },
-  headerPlus: {
-    fontSize: 24,
-    lineHeight: 28,
-    color: colors.primary,
-  },
+  pressed: {opacity: 0.6},
   swipeContainer: {
     marginBottom: spacing.md,
     position: 'relative',
@@ -393,39 +382,57 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   card: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.xl,
-    padding: spacing.lg,
+    backgroundColor: colors.glass.bg,
+    borderWidth: 1,
+    borderColor: colors.glass.border,
+    borderRadius: borderRadius.xxl,
+    padding: spacing.xl,
     ...shadows.md,
   },
   pressedCard: {
-    opacity: 0.92,
-    transform: [{scale: 0.98}],
+    opacity: 0.88,
+    transform: [{scale: 0.97}],
   },
   cardContent: {
     flex: 1,
   },
   cardTitle: {
-    ...typography.h5,
-    color: colors.text.primary,
+    fontSize: 18,
+    fontWeight: '700' as const,
+    color: colors.white,
     marginBottom: spacing.xs,
   },
   cardDesc: {
-    ...typography.small,
+    fontSize: 14,
     color: colors.text.secondary,
+    marginBottom: spacing.sm,
+    lineHeight: 20,
+  },
+  deadlinePill: {
+    backgroundColor: 'rgba(124,58,237,0.15)',
+    borderRadius: borderRadius.full,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 4,
+    alignSelf: 'flex-start',
     marginBottom: spacing.sm,
   },
   deadlineBadge: {
     fontSize: 12,
-    color: colors.primary,
+    color: colors.accent,
     fontWeight: '600' as const,
+  },
+  expiredPill: {
+    backgroundColor: 'rgba(248,113,113,0.15)',
+    borderRadius: borderRadius.full,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 4,
+    alignSelf: 'flex-start',
     marginBottom: spacing.sm,
   },
   deadlineExpired: {
     fontSize: 12,
-    color: colors.text.tertiary,
+    color: colors.status.error,
     fontWeight: '500' as const,
-    marginBottom: spacing.sm,
   },
   metaRow: {
     flexDirection: 'row',
@@ -437,27 +444,18 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border.light,
   },
   cardMeta: {
-    ...typography.caption,
+    fontSize: 12,
     color: colors.text.tertiary,
   },
   shareText: {
-    ...typography.smallBold,
-    color: colors.primary,
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: colors.accent,
   },
   errorText: {
-    ...typography.body,
+    fontSize: 16,
     color: colors.status.error,
-    marginBottom: spacing.md,
-  },
-  retryBtn: {
-    backgroundColor: colors.primary,
-    borderRadius: borderRadius.md,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-  },
-  retryText: {
-    ...typography.bodyBold,
-    color: colors.white,
+    marginBottom: spacing.lg,
   },
   emptyContainer: {
     flex: 1,
@@ -470,7 +468,7 @@ const styles = StyleSheet.create({
     height: 72,
     borderRadius: 36,
     borderWidth: 2,
-    borderColor: colors.border.light,
+    borderColor: colors.border.medium,
     borderStyle: 'dashed',
     justifyContent: 'center',
     alignItems: 'center',
@@ -482,43 +480,34 @@ const styles = StyleSheet.create({
     lineHeight: 36,
   },
   emptyTitle: {
-    ...typography.h4,
-    color: colors.text.primary,
+    fontSize: 22,
+    fontWeight: '700' as const,
+    color: colors.white,
     marginBottom: spacing.sm,
     textAlign: 'center',
   },
   emptySubtitle: {
-    ...typography.body,
+    fontSize: 15,
     color: colors.text.secondary,
     textAlign: 'center',
     marginBottom: spacing.xxxl,
     lineHeight: 24,
   },
-  primaryButton: {
-    backgroundColor: colors.primary,
-    borderRadius: borderRadius.md,
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.xxxl,
-    ...shadows.md,
-  },
-  primaryButtonText: {
-    ...typography.bodyBold,
-    color: colors.white,
-  },
   fab: {
     position: 'absolute',
     right: spacing.xl,
-    bottom: spacing.xxl,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.primary,
+    bottom: spacing.xxxl,
+  },
+  fabGradient: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
-    ...shadows.lg,
+    ...shadows.glow,
   },
   fabPressed: {
-    opacity: 0.92,
+    opacity: 0.88,
     transform: [{scale: 0.95}],
   },
   fabText: {
@@ -531,7 +520,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xxxl,
   },
   listFooterText: {
-    ...typography.caption,
+    fontSize: 12,
     color: colors.text.tertiary,
   },
 });

@@ -2,10 +2,8 @@ import React, {useCallback, useState} from 'react';
 import {
   View,
   Text,
-  TextInput,
   Pressable,
   StyleSheet,
-  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -18,6 +16,7 @@ import {updateItem, uploadImage} from '../api/items';
 import {useWishlistDetail} from '../hooks/useWishlistDetail';
 import {resolveImageUrl} from '../utils/imageUrl';
 import {colors, spacing, borderRadius} from '../theme';
+import {GradientBackground, GlassInput, PrimaryButton} from '../components';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import type {RootStackParamList} from '../navigation/types';
 import type {Item} from '../types';
@@ -104,118 +103,106 @@ export default function EditItemScreen({route, navigation}: Props) {
 
   if (!item) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.errorText}>Item not found</Text>
-      </View>
+      <GradientBackground>
+        <View style={styles.center}>
+          <Text style={styles.errorText}>Item not found</Text>
+        </View>
+      </GradientBackground>
     );
   }
 
   const resolvedImage = resolveImageUrl(imageUrl);
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex1}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.label}>URL</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="https://..."
-          value={url}
-          onChangeText={setUrl}
-          autoCapitalize="none"
-          keyboardType="url"
-        />
-
-        <Text style={styles.label}>Title *</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="e.g. AirPods Pro"
-          value={title}
-          onChangeText={setTitle}
-          maxLength={500}
-        />
-
-        <View style={styles.row}>
-          <View style={styles.flex}>
-            <Text style={styles.label}>Price</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="0.00"
-              value={priceCents}
-              onChangeText={setPriceCents}
-              keyboardType="decimal-pad"
-            />
-          </View>
-          <View style={styles.currencyBox}>
-            <Text style={styles.label}>Currency</Text>
-            <TextInput
-              style={[styles.input, styles.currencyInput]}
-              placeholder="USD"
-              value={currency}
-              onChangeText={setCurrency}
-              maxLength={3}
-              autoCapitalize="characters"
-            />
-          </View>
-        </View>
-
-        <Text style={styles.label}>Image</Text>
-        <View style={styles.imageRow}>
-          <TextInput
-            style={[styles.input, styles.urlInput]}
-            placeholder="https://example.com/image.jpg"
-            value={imageUrl}
-            onChangeText={setImageUrl}
+    <GradientBackground>
+      <KeyboardAvoidingView
+        style={styles.flex1}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView contentContainerStyle={styles.container}>
+          <Text style={styles.label}>URL</Text>
+          <GlassInput
+            placeholder="https://..."
+            value={url}
+            onChangeText={setUrl}
             autoCapitalize="none"
             keyboardType="url"
           />
-          <Pressable
-            android_ripple={null}
-            style={({pressed}) => [styles.pickBtn, pressed && styles.pressedState]}
-            onPress={handlePickImage}>
-            <Text style={styles.pickBtnText}>Gallery</Text>
-          </Pressable>
-        </View>
-        {resolvedImage ? (
-          <Image
-            source={{uri: resolvedImage}}
-            style={styles.imagePreview}
-            resizeMode="cover"
-          />
-        ) : null}
 
-        <Pressable
-          android_ripple={null}
-          style={({pressed}) => [styles.button, pressed && styles.pressedState]}
-          onPress={handleSave}
-          disabled={loading}>
-          {loading ? (
-            <ActivityIndicator color={colors.white} />
-          ) : (
-            <Text style={styles.buttonText}>Save Changes</Text>
-          )}
-        </Pressable>
-      </ScrollView>
-    </KeyboardAvoidingView>
+          <Text style={styles.label}>Title *</Text>
+          <GlassInput
+            placeholder="e.g. AirPods Pro"
+            value={title}
+            onChangeText={setTitle}
+            maxLength={500}
+          />
+
+          <View style={styles.row}>
+            <View style={styles.flex}>
+              <Text style={styles.label}>Price</Text>
+              <GlassInput
+                placeholder="0.00"
+                value={priceCents}
+                onChangeText={setPriceCents}
+                keyboardType="decimal-pad"
+              />
+            </View>
+            <View style={styles.currencyBox}>
+              <Text style={styles.label}>Currency</Text>
+              <GlassInput
+                placeholder="USD"
+                value={currency}
+                onChangeText={setCurrency}
+                maxLength={3}
+                autoCapitalize="characters"
+                style={styles.currencyInput}
+              />
+            </View>
+          </View>
+
+          <Text style={styles.label}>Image</Text>
+          <View style={styles.imageRow}>
+            <GlassInput
+              placeholder="https://example.com/image.jpg"
+              value={imageUrl}
+              onChangeText={setImageUrl}
+              autoCapitalize="none"
+              keyboardType="url"
+              style={styles.urlInput}
+            />
+            <Pressable
+              android_ripple={null}
+              style={({pressed}) => [styles.pickBtn, pressed && styles.pressedState]}
+              onPress={handlePickImage}>
+              <Text style={styles.pickBtnText}>Gallery</Text>
+            </Pressable>
+          </View>
+          {resolvedImage ? (
+            <Image
+              source={{uri: resolvedImage}}
+              style={styles.imagePreview}
+              resizeMode="cover"
+            />
+          ) : null}
+
+          <PrimaryButton
+            title="Save Changes"
+            onPress={handleSave}
+            loading={loading}
+            disabled={loading}
+            style={styles.submitBtn}
+          />
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </GradientBackground>
   );
 }
 
 const styles = StyleSheet.create({
   flex1: {flex: 1},
-  container: {padding: spacing.xxl, backgroundColor: colors.white, flexGrow: 1},
+  container: {padding: spacing.xxl, paddingTop: 100, flexGrow: 1},
   center: {flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xxxl},
   errorText: {fontSize: 16, color: colors.status.error},
   label: {fontSize: 13, fontWeight: '600' as const, color: colors.text.secondary, marginBottom: spacing.xs, marginTop: spacing.lg},
-  input: {
-    borderWidth: 1,
-    borderColor: colors.border.light,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    fontSize: 16,
-    backgroundColor: colors.background.secondary,
-    color: colors.text.primary,
-  },
   row: {flexDirection: 'row', gap: spacing.md},
   flex: {flex: 1},
   currencyBox: {width: 90},
@@ -224,30 +211,26 @@ const styles = StyleSheet.create({
   urlInput: {flex: 1},
   pickBtn: {
     borderWidth: 1.5,
-    borderColor: colors.primary,
+    borderColor: colors.accent,
     borderRadius: borderRadius.md,
     paddingHorizontal: spacing.md,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'rgba(124,58,237,0.08)',
   },
-  pickBtnText: {color: colors.primary, fontWeight: '600' as const, fontSize: 14},
+  pickBtnText: {color: colors.accent, fontWeight: '600' as const, fontSize: 14},
   imagePreview: {
     width: '100%',
     height: 160,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.xl,
     marginTop: spacing.md,
-    backgroundColor: colors.background.secondary,
+    backgroundColor: 'rgba(255,255,255,0.06)',
   },
-  button: {
-    backgroundColor: colors.primary,
-    borderRadius: borderRadius.md,
-    padding: spacing.lg,
-    alignItems: 'center',
+  submitBtn: {
     marginTop: spacing.xxxl,
   },
-  buttonText: {color: colors.white, fontSize: 16, fontWeight: '600' as const},
   pressedState: {
-    opacity: 0.92,
-    transform: [{scale: 0.98}],
+    opacity: 0.88,
+    transform: [{scale: 0.97}],
   },
 });

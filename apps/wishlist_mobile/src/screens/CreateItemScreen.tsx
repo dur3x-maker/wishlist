@@ -2,7 +2,6 @@ import React, {useCallback, useState} from 'react';
 import {
   View,
   Text,
-  TextInput,
   Pressable,
   StyleSheet,
   ActivityIndicator,
@@ -16,6 +15,7 @@ import {launchImageLibrary} from 'react-native-image-picker';
 import {useQueryClient} from '@tanstack/react-query';
 import {createItem, scrapeUrl, uploadImage} from '../api/items';
 import {colors, spacing, borderRadius} from '../theme';
+import {GradientBackground, GlassInput, PrimaryButton} from '../components';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import type {RootStackParamList} from '../navigation/types';
 
@@ -119,132 +119,120 @@ export default function CreateItemScreen({route, navigation}: Props) {
   }, [title, url, priceCents, currency, imageUrl, wishlistId, queryClient, navigation]);
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex1}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.label}>URL</Text>
-        <View style={styles.urlRow}>
-          <TextInput
-            style={[styles.input, styles.urlInput]}
-            placeholder="https://..."
-            value={url}
-            onChangeText={setUrl}
-            autoCapitalize="none"
-            keyboardType="url"
-            onBlur={handleScrape}
-          />
-          <Pressable
-            android_ripple={null}
-            style={({pressed}) => [styles.scrapeBtn, pressed && styles.pressedState]}
-            onPress={handleScrape}
-            disabled={scraping || !url.trim()}>
-            {scraping ? (
-              <ActivityIndicator size="small" color={colors.primary} />
-            ) : (
-              <Text style={styles.scrapeBtnText}>Autofill</Text>
-            )}
-          </Pressable>
-        </View>
-
-        <Text style={styles.label}>Title *</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="e.g. AirPods Pro"
-          value={title}
-          onChangeText={setTitle}
-          maxLength={500}
-        />
-
-        <View style={styles.row}>
-          <View style={styles.flex}>
-            <Text style={styles.label}>Price</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="0.00"
-              value={priceCents}
-              onChangeText={setPriceCents}
-              keyboardType="decimal-pad"
+    <GradientBackground>
+      <KeyboardAvoidingView
+        style={styles.flex1}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView contentContainerStyle={styles.container}>
+          <Text style={styles.label}>URL</Text>
+          <View style={styles.urlRow}>
+            <GlassInput
+              placeholder="https://..."
+              value={url}
+              onChangeText={setUrl}
+              autoCapitalize="none"
+              keyboardType="url"
+              onBlur={handleScrape}
+              style={styles.urlInput}
             />
+            <Pressable
+              android_ripple={null}
+              style={({pressed}) => [styles.scrapeBtn, pressed && styles.pressedState]}
+              onPress={handleScrape}
+              disabled={scraping || !url.trim()}>
+              {scraping ? (
+                <ActivityIndicator size="small" color={colors.accent} />
+              ) : (
+                <Text style={styles.scrapeBtnText}>Autofill</Text>
+              )}
+            </Pressable>
           </View>
-          <View style={styles.currencyBox}>
-            <Text style={styles.label}>Currency</Text>
-            <TextInput
-              style={[styles.input, styles.currencyInput]}
-              placeholder="USD"
-              value={currency}
-              onChangeText={setCurrency}
-              maxLength={3}
-              autoCapitalize="characters"
+
+          <Text style={styles.label}>Title *</Text>
+          <GlassInput
+            placeholder="e.g. AirPods Pro"
+            value={title}
+            onChangeText={setTitle}
+            maxLength={500}
+          />
+
+          <View style={styles.row}>
+            <View style={styles.flex}>
+              <Text style={styles.label}>Price</Text>
+              <GlassInput
+                placeholder="0.00"
+                value={priceCents}
+                onChangeText={setPriceCents}
+                keyboardType="decimal-pad"
+              />
+            </View>
+            <View style={styles.currencyBox}>
+              <Text style={styles.label}>Currency</Text>
+              <GlassInput
+                placeholder="USD"
+                value={currency}
+                onChangeText={setCurrency}
+                maxLength={3}
+                autoCapitalize="characters"
+                style={styles.currencyInput}
+              />
+            </View>
+          </View>
+
+          <Text style={styles.label}>Image</Text>
+          <View style={styles.imageRow}>
+            <GlassInput
+              placeholder="https://example.com/image.jpg"
+              value={imageUrl}
+              onChangeText={setImageUrl}
+              autoCapitalize="none"
+              keyboardType="url"
+              style={styles.urlInput}
             />
+            <Pressable
+              android_ripple={null}
+              style={({pressed}) => [styles.pickBtn, pressed && styles.pressedState]}
+              onPress={handlePickImage}>
+              <Text style={styles.pickBtnText}>Gallery</Text>
+            </Pressable>
           </View>
-        </View>
+          {imageUrl ? (
+            <Image
+              source={{uri: imageUrl}}
+              style={styles.imagePreview}
+              resizeMode="cover"
+            />
+          ) : null}
 
-        <Text style={styles.label}>Image</Text>
-        <View style={styles.imageRow}>
-          <TextInput
-            style={[styles.input, styles.urlInput]}
-            placeholder="https://example.com/image.jpg"
-            value={imageUrl}
-            onChangeText={setImageUrl}
-            autoCapitalize="none"
-            keyboardType="url"
+          <PrimaryButton
+            title="Add Item"
+            onPress={handleCreate}
+            loading={loading}
+            disabled={loading}
+            style={styles.submitBtn}
           />
-          <Pressable
-            android_ripple={null}
-            style={({pressed}) => [styles.pickBtn, pressed && styles.pressedState]}
-            onPress={handlePickImage}>
-            <Text style={styles.pickBtnText}>Gallery</Text>
-          </Pressable>
-        </View>
-        {imageUrl ? (
-          <Image
-            source={{uri: imageUrl}}
-            style={styles.imagePreview}
-            resizeMode="cover"
-          />
-        ) : null}
-
-        <Pressable
-          android_ripple={null}
-          style={({pressed}) => [styles.button, pressed && styles.pressedState]}
-          onPress={handleCreate}
-          disabled={loading}>
-          {loading ? (
-            <ActivityIndicator color={colors.white} />
-          ) : (
-            <Text style={styles.buttonText}>Add Item</Text>
-          )}
-        </Pressable>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </GradientBackground>
   );
 }
 
 const styles = StyleSheet.create({
   flex1: {flex: 1},
-  container: {padding: spacing.xxl, backgroundColor: colors.white, flexGrow: 1},
+  container: {padding: spacing.xxl, paddingTop: 100, flexGrow: 1},
   label: {fontSize: 13, fontWeight: '600' as const, color: colors.text.secondary, marginBottom: spacing.xs, marginTop: spacing.lg},
-  input: {
-    borderWidth: 1,
-    borderColor: colors.border.light,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    fontSize: 16,
-    backgroundColor: colors.background.secondary,
-    color: colors.text.primary,
-  },
   urlRow: {flexDirection: 'row', gap: spacing.sm},
   urlInput: {flex: 1},
   scrapeBtn: {
     borderWidth: 1.5,
-    borderColor: colors.primary,
+    borderColor: colors.accent,
     borderRadius: borderRadius.md,
     paddingHorizontal: spacing.md,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'rgba(124,58,237,0.08)',
   },
-  scrapeBtnText: {color: colors.primary, fontWeight: '600' as const, fontSize: 14},
+  scrapeBtnText: {color: colors.accent, fontWeight: '600' as const, fontSize: 14},
   row: {flexDirection: 'row', gap: spacing.md},
   flex: {flex: 1},
   currencyBox: {width: 90},
@@ -252,30 +240,26 @@ const styles = StyleSheet.create({
   imageRow: {flexDirection: 'row', gap: spacing.sm},
   pickBtn: {
     borderWidth: 1.5,
-    borderColor: colors.primary,
+    borderColor: colors.accent,
     borderRadius: borderRadius.md,
     paddingHorizontal: spacing.md,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'rgba(124,58,237,0.08)',
   },
-  pickBtnText: {color: colors.primary, fontWeight: '600' as const, fontSize: 14},
+  pickBtnText: {color: colors.accent, fontWeight: '600' as const, fontSize: 14},
   imagePreview: {
     width: '100%',
     height: 160,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.xl,
     marginTop: spacing.md,
-    backgroundColor: colors.background.secondary,
+    backgroundColor: 'rgba(255,255,255,0.06)',
   },
-  button: {
-    backgroundColor: colors.primary,
-    borderRadius: borderRadius.md,
-    padding: spacing.lg,
-    alignItems: 'center',
+  submitBtn: {
     marginTop: spacing.xxxl,
   },
-  buttonText: {color: colors.white, fontSize: 16, fontWeight: '600' as const},
   pressedState: {
-    opacity: 0.92,
-    transform: [{scale: 0.98}],
+    opacity: 0.88,
+    transform: [{scale: 0.97}],
   },
 });

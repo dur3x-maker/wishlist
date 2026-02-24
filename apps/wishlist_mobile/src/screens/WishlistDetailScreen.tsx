@@ -13,12 +13,14 @@ import {
   Image,
   Animated,
 } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import {useFocusEffect} from '@react-navigation/native';
 import {useWishlistDetail} from '../hooks/useWishlistDetail';
 import {useReserve} from '../hooks/useReserve';
 import {useAuthContext} from '../hooks/AuthContext';
 import {WEB_BASE_URL} from '../api/client';
-import {colors, spacing, typography, shadows, borderRadius} from '../theme';
+import {colors, spacing, shadows, borderRadius} from '../theme';
+import {GradientBackground, PrimaryButton, GlassInput} from '../components';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import type {RootStackParamList} from '../navigation/types';
 import type {Item} from '../types';
@@ -28,7 +30,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'WishlistDetail'>;
 
 const STATUS_COLORS: Record<string, string> = {
   active: colors.status.success,
-  funded: colors.primary,
+  funded: colors.accent,
   expired: colors.status.warning,
 };
 const DEFAULT_STATUS_COLOR = colors.text.tertiary;
@@ -53,7 +55,6 @@ function AnimatedProgressBar({item}: {item: Item}) {
       }).start();
       hasAnimatedRef.current = true;
     } else {
-      // Smooth update on contribution changes
       Animated.timing(progressAnim, {
         toValue: progress,
         duration: 300,
@@ -242,23 +243,22 @@ export default function WishlistDetailScreen({route, navigation}: Props) {
 
   if (isLoading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
+      <GradientBackground>
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={colors.accent} />
+        </View>
+      </GradientBackground>
     );
   }
 
   if (isError || !wishlist) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.errorText}>Failed to load wishlist</Text>
-        <Pressable
-          android_ripple={null}
-          onPress={handleRetry}
-          style={({pressed}) => [styles.retryBtn, pressed && styles.pressedState]}>
-          <Text style={styles.retryText}>Retry</Text>
-        </Pressable>
-      </View>
+      <GradientBackground>
+        <View style={styles.center}>
+          <Text style={styles.errorText}>Failed to load wishlist</Text>
+          <PrimaryButton title="Retry" onPress={handleRetry} />
+        </View>
+      </GradientBackground>
     );
   }
 
@@ -322,7 +322,7 @@ export default function WishlistDetailScreen({route, navigation}: Props) {
               onPress={() => handleReservePress(item)}
               disabled={isReservedByOther || reserve.isPending}>
               {reserve.isPending ? (
-                <ActivityIndicator size="small" color={colors.primary} />
+                <ActivityIndicator size="small" color={colors.accent} />
               ) : (
                 <Text
                   style={[
@@ -345,7 +345,7 @@ export default function WishlistDetailScreen({route, navigation}: Props) {
   };
 
   return (
-    <View style={styles.screenContainer}>
+    <GradientBackground>
       <FlatList
         data={wishlist.items}
         keyExtractor={keyExtractor}
@@ -373,12 +373,7 @@ export default function WishlistDetailScreen({route, navigation}: Props) {
             </View>
             <Text style={styles.emptyText}>No items yet</Text>
             <Text style={styles.emptyHint}>Add your first item to get started</Text>
-            <Pressable
-              android_ripple={null}
-              style={({pressed}) => [styles.emptyCta, pressed && styles.pressedState]}
-              onPress={handleAddItem}>
-              <Text style={styles.emptyCtaText}>+ Add your first item</Text>
-            </Pressable>
+            <PrimaryButton title="+ Add your first item" onPress={handleAddItem} />
           </View>
         }
       />
@@ -388,7 +383,11 @@ export default function WishlistDetailScreen({route, navigation}: Props) {
           android_ripple={null}
           style={({pressed}) => [styles.fab, pressed && styles.fabPressed]}
           onPress={handleAddItem}>
-          <Text style={styles.fabText}>+</Text>
+          <LinearGradient
+            colors={[colors.primary, colors.primaryLight]}
+            style={styles.fabGradient}>
+            <Text style={styles.fabText}>+</Text>
+          </LinearGradient>
         </Pressable>
       )}
 
@@ -401,13 +400,12 @@ export default function WishlistDetailScreen({route, navigation}: Props) {
           <View style={styles.modalBox}>
             <Text style={styles.modalTitle}>Reserve Item</Text>
             <Text style={styles.modalLabel}>Your name</Text>
-            <TextInput
-              style={styles.modalInput}
+            <GlassInput
               placeholder="e.g. John"
-              placeholderTextColor={colors.text.tertiary}
               value={displayName}
               onChangeText={setDisplayName}
               autoFocus
+              style={styles.modalInputSpacing}
             />
             <View style={styles.modalActions}>
               <Pressable
@@ -431,45 +429,47 @@ export default function WishlistDetailScreen({route, navigation}: Props) {
           </View>
         </View>
       </Modal>
-    </View>
+    </GradientBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  screenContainer: {flex: 1, backgroundColor: colors.background.secondary},
-  list: {padding: spacing.lg, paddingBottom: 80, flexGrow: 1},
+  list: {padding: spacing.lg, paddingTop: 100, paddingBottom: 100, flexGrow: 1},
   center: {flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xxxl},
   description: {
-    ...typography.small,
+    fontSize: 14,
     color: colors.text.secondary,
     marginBottom: spacing.lg,
+    lineHeight: 20,
   },
   headerRight: {flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginRight: spacing.xs},
-  headerBtn: {color: colors.primary, fontSize: 15},
-  headerPlus: {color: colors.primary, fontSize: 24, lineHeight: 28},
+  headerBtn: {color: colors.accent, fontSize: 15},
+  headerPlus: {color: colors.accent, fontSize: 24, lineHeight: 28},
   headerPressed: {opacity: 0.6},
   pressedState: {
-    opacity: 0.92,
-    transform: [{scale: 0.98}],
+    opacity: 0.88,
+    transform: [{scale: 0.97}],
   },
   summaryBlock: {
     flexDirection: 'row',
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.md,
+    backgroundColor: colors.glass.bg,
+    borderWidth: 1,
+    borderColor: colors.glass.border,
+    borderRadius: borderRadius.xl,
     padding: spacing.lg,
     marginBottom: spacing.lg,
-    ...shadows.sm,
   },
   summaryItem: {
     flex: 1,
     alignItems: 'center',
   },
   summaryValue: {
-    ...typography.h5,
-    color: colors.text.primary,
+    fontSize: 18,
+    fontWeight: '700' as const,
+    color: colors.white,
   },
   summaryLabel: {
-    ...typography.caption,
+    fontSize: 12,
     color: colors.text.tertiary,
     marginTop: 2,
   },
@@ -478,23 +478,25 @@ const styles = StyleSheet.create({
     backgroundColor: colors.border.light,
   },
   card: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.xl,
+    backgroundColor: colors.glass.bg,
+    borderWidth: 1,
+    borderColor: colors.glass.border,
+    borderRadius: borderRadius.xxl,
     marginBottom: spacing.md,
     ...shadows.md,
     overflow: 'hidden',
   },
-  cardImage: {width: '100%', height: 140, backgroundColor: colors.background.secondary},
+  cardImage: {width: '100%', height: 140, backgroundColor: colors.background.tertiary},
   cardImageFallback: {
     width: '100%',
     height: 100,
-    backgroundColor: colors.background.tertiary,
+    backgroundColor: 'rgba(255,255,255,0.04)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   cardImageFallbackIcon: {
     fontSize: 32,
-    opacity: 0.4,
+    opacity: 0.3,
   },
   cardBody: {padding: spacing.lg},
   cardTop: {
@@ -503,41 +505,34 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: spacing.xs,
   },
-  itemTitle: {fontSize: 16, fontWeight: '600' as const, color: colors.text.primary, flex: 1, marginRight: spacing.sm},
-  statusBadge: {borderRadius: borderRadius.sm, paddingHorizontal: spacing.sm, paddingVertical: 3},
-  statusText: {fontSize: 11, fontWeight: '600' as const, textTransform: 'uppercase' as const},
+  itemTitle: {fontSize: 16, fontWeight: '600' as const, color: colors.white, flex: 1, marginRight: spacing.sm},
+  statusBadge: {borderRadius: borderRadius.full, paddingHorizontal: spacing.sm, paddingVertical: 3},
+  statusText: {fontSize: 11, fontWeight: '700' as const, textTransform: 'uppercase' as const, letterSpacing: 0.5},
   price: {fontSize: 14, color: colors.text.secondary, marginBottom: spacing.xs},
   progressSection: {marginBottom: spacing.md},
   progressTrack: {
-    height: 6,
-    backgroundColor: colors.border.light,
-    borderRadius: borderRadius.sm,
+    height: 12,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: borderRadius.full,
     overflow: 'hidden',
     marginBottom: spacing.xs,
   },
-  progressFill: {height: 6, borderRadius: borderRadius.sm, backgroundColor: colors.primary},
-  progressLabel: {fontSize: 12, color: colors.text.secondary},
+  progressFill: {height: 12, borderRadius: borderRadius.full, backgroundColor: colors.primary},
+  progressLabel: {fontSize: 12, color: colors.text.tertiary},
   reserveBtn: {
     borderWidth: 1.5,
-    borderColor: colors.primary,
+    borderColor: colors.accent,
     borderRadius: borderRadius.md,
     paddingVertical: spacing.sm,
     alignItems: 'center',
     marginTop: spacing.xs,
   },
-  reserveBtnActive: {backgroundColor: colors.primary},
+  reserveBtnActive: {backgroundColor: colors.primary, borderColor: colors.primary},
   reserveBtnDisabled: {borderColor: colors.border.light},
-  reserveBtnText: {color: colors.primary, fontWeight: '600' as const, fontSize: 14},
+  reserveBtnText: {color: colors.accent, fontWeight: '600' as const, fontSize: 14},
   reserveBtnTextActive: {color: colors.white},
   reserveBtnTextDisabled: {color: colors.text.tertiary},
-  errorText: {fontSize: 16, color: colors.status.error, marginBottom: spacing.md},
-  retryBtn: {
-    backgroundColor: colors.primary,
-    borderRadius: borderRadius.md,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-  },
-  retryText: {color: colors.white, fontWeight: '600' as const},
+  errorText: {fontSize: 16, color: colors.status.error, marginBottom: spacing.lg},
   emptyCenter: {
     flex: 1,
     justifyContent: 'center',
@@ -549,7 +544,7 @@ const styles = StyleSheet.create({
     height: 64,
     borderRadius: 32,
     borderWidth: 2,
-    borderColor: colors.border.light,
+    borderColor: colors.border.medium,
     borderStyle: 'dashed',
     justifyContent: 'center',
     alignItems: 'center',
@@ -561,40 +556,31 @@ const styles = StyleSheet.create({
     lineHeight: 32,
   },
   emptyText: {
-    ...typography.h5,
-    color: colors.text.primary,
+    fontSize: 18,
+    fontWeight: '600' as const,
+    color: colors.white,
     marginBottom: spacing.xs,
   },
   emptyHint: {
-    ...typography.small,
+    fontSize: 14,
     color: colors.text.tertiary,
     marginBottom: spacing.xxl,
-  },
-  emptyCta: {
-    backgroundColor: colors.primary,
-    borderRadius: borderRadius.md,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xxl,
-    ...shadows.md,
-  },
-  emptyCtaText: {
-    ...typography.bodyBold,
-    color: colors.white,
   },
   fab: {
     position: 'absolute',
     right: spacing.xl,
-    bottom: spacing.xxl,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.primary,
+    bottom: spacing.xxxl,
+  },
+  fabGradient: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
-    ...shadows.lg,
+    ...shadows.glow,
   },
   fabPressed: {
-    opacity: 0.92,
+    opacity: 0.88,
     transform: [{scale: 0.95}],
   },
   fabText: {
@@ -604,34 +590,28 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'flex-end',
   },
   modalBox: {
-    backgroundColor: colors.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    backgroundColor: colors.background.secondary,
+    borderTopLeftRadius: borderRadius.xxl,
+    borderTopRightRadius: borderRadius.xxl,
+    borderWidth: 1,
+    borderBottomWidth: 0,
+    borderColor: colors.glass.border,
     padding: spacing.xxl,
     paddingBottom: 40,
   },
-  modalTitle: {fontSize: 18, fontWeight: '700' as const, marginBottom: spacing.lg, color: colors.text.primary},
+  modalTitle: {fontSize: 18, fontWeight: '700' as const, marginBottom: spacing.lg, color: colors.white},
   modalLabel: {fontSize: 13, color: colors.text.secondary, marginBottom: spacing.xs},
-  modalInput: {
-    borderWidth: 1,
-    borderColor: colors.border.light,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    fontSize: 16,
-    backgroundColor: colors.background.secondary,
-    marginBottom: spacing.lg,
-    color: colors.text.primary,
-  },
+  modalInputSpacing: {marginBottom: spacing.lg},
   modalActions: {flexDirection: 'row', gap: spacing.md},
   modalCancel: {
     flex: 1,
     borderWidth: 1.5,
     borderColor: colors.border.light,
-    borderRadius: borderRadius.md,
+    borderRadius: 18,
     padding: spacing.md,
     alignItems: 'center',
   },
@@ -639,7 +619,7 @@ const styles = StyleSheet.create({
   modalConfirm: {
     flex: 1,
     backgroundColor: colors.primary,
-    borderRadius: borderRadius.md,
+    borderRadius: 18,
     padding: spacing.md,
     alignItems: 'center',
   },
@@ -649,7 +629,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xxxl,
   },
   listFooterText: {
-    ...typography.caption,
+    fontSize: 12,
     color: colors.text.tertiary,
   },
 });

@@ -1,38 +1,54 @@
 export const colors = {
-  primary: '#6C63FF',
-  primaryLight: '#8B84FF',
-  primaryDark: '#5449E0',
-  
+  primary: '#7C3AED',
+  primaryLight: '#A855F7',
+  primaryDark: '#6D28D9',
+  accent: '#C4B5FD',
+
   white: '#FFFFFF',
   black: '#000000',
-  
+
+  // Gradient stops for background
+  gradient: {
+    start: '#0E0824',
+    mid: '#170E3C',
+    end: '#24145E',
+  },
+
+  // Glass surface
+  glass: {
+    bg: 'rgba(255,255,255,0.06)',
+    border: 'rgba(255,255,255,0.12)',
+    bgLight: 'rgba(255,255,255,0.10)',
+    borderLight: 'rgba(255,255,255,0.18)',
+  },
+
   text: {
-    primary: '#1A1A1A',
-    secondary: '#6B7280',
-    tertiary: '#9CA3AF',
-    disabled: '#D1D5DB',
-  },
-  
-  background: {
     primary: '#FFFFFF',
-    secondary: '#F9FAFB',
-    tertiary: '#F3F4F6',
+    secondary: 'rgba(255,255,255,0.70)',
+    tertiary: 'rgba(255,255,255,0.45)',
+    disabled: 'rgba(255,255,255,0.25)',
   },
-  
+
+  background: {
+    primary: '#0E0824',
+    secondary: '#170E3C',
+    tertiary: '#24145E',
+  },
+
   border: {
-    light: '#E5E7EB',
-    medium: '#D1D5DB',
-    dark: '#9CA3AF',
+    light: 'rgba(255,255,255,0.12)',
+    medium: 'rgba(255,255,255,0.18)',
+    dark: 'rgba(255,255,255,0.25)',
   },
-  
+
   status: {
-    success: '#10B981',
-    warning: '#F59E0B',
-    error: '#EF4444',
-    info: '#3B82F6',
+    success: '#34D399',
+    warning: '#FBBF24',
+    error: '#F87171',
+    info: '#60A5FA',
   },
-  
+
   shadow: {
-    color: '#000000',
+    color: '#7C3AED',
   },
 };

@@ -15,7 +15,8 @@ import {useFocusEffect} from '@react-navigation/native';
 import {useWishlistDetail} from '../hooks/useWishlistDetail';
 import {useReserve} from '../hooks/useReserve';
 import {useAuthContext} from '../hooks/AuthContext';
-import {colors, spacing, borderRadius, shadows} from '../theme';
+import {colors, spacing, borderRadius} from '../theme';
+import {GradientBackground, SecondaryButton} from '../components';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import type {RootStackParamList} from '../navigation/types';
 import type {Item} from '../types';
@@ -25,12 +26,12 @@ type Props = NativeStackScreenProps<RootStackParamList, 'ItemDetail'>;
 
 const STATUS_COLORS: Record<string, string> = {
   active: colors.status.success,
-  funded: colors.primary,
+  funded: colors.accent,
   expired: colors.status.warning,
 };
 const DEFAULT_STATUS_COLOR = colors.text.tertiary;
 
-function AnimatedProgress({progress, color}: {progress: number; color: string}) {
+function AnimatedProgress({progress}: {progress: number}) {
   const anim = React.useRef(new Animated.Value(0)).current;
 
   React.useEffect(() => {
@@ -48,7 +49,7 @@ function AnimatedProgress({progress, color}: {progress: number; color: string}) 
 
   return (
     <View style={styles.progressBar}>
-      <Animated.View style={[styles.progressFill, {width, backgroundColor: color}]} />
+      <Animated.View style={[styles.progressFill, {width}]} />
     </View>
   );
 }
@@ -123,9 +124,11 @@ export default function ItemDetailScreen({route, navigation}: Props) {
 
   if (!item) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.errorText}>Item not found</Text>
-      </View>
+      <GradientBackground>
+        <View style={styles.center}>
+          <Text style={styles.errorText}>Item not found</Text>
+        </View>
+      </GradientBackground>
     );
   }
 
@@ -142,151 +145,156 @@ export default function ItemDetailScreen({route, navigation}: Props) {
   const isReservedByOther = item.reserved && !isReservedByMe;
 
   return (
-    <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
-      {resolveImageUrl(item.image_url) ? (
-        <Image source={{uri: resolveImageUrl(item.image_url)!}} style={styles.image} resizeMode="cover" />
-      ) : null}
+    <GradientBackground>
+      <ScrollView contentContainerStyle={styles.container}>
+        {resolveImageUrl(item.image_url) ? (
+          <Image source={{uri: resolveImageUrl(item.image_url)!}} style={styles.image} resizeMode="cover" />
+        ) : null}
 
-      <View style={styles.header}>
-        <Text style={styles.title}>{item.title}</Text>
-        <View style={[styles.statusBadge, {backgroundColor: badgeBg}]}>
-          <Text style={[styles.statusText, {color: statusColor}]}>
-            {item.status}
-          </Text>
+        <View style={styles.header}>
+          <Text style={styles.title}>{item.title}</Text>
+          <View style={[styles.statusBadge, {backgroundColor: badgeBg}]}>
+            <Text style={[styles.statusText, {color: statusColor}]}>
+              {item.status}
+            </Text>
+          </View>
         </View>
-      </View>
 
-      {isOwner && (
-        <View style={styles.editSection}>
+        {isOwner && (
+          <View style={styles.editSection}>
+            <SecondaryButton title="Edit Item" onPress={handleEdit} />
+          </View>
+        )}
+
+        {item.url ? (
           <Pressable
             android_ripple={null}
-            style={({pressed}) => [styles.editBtn, pressed && styles.pressedState]}
-            onPress={handleEdit}>
-            <Text style={styles.editBtnText}>Edit Item</Text>
+            style={({pressed}) => [styles.urlRow, pressed && {opacity: 0.6}]}
+            onPress={handleOpenUrl}>
+            <Text style={styles.urlText} numberOfLines={1}>
+              {item.url}
+            </Text>
           </Pressable>
-        </View>
-      )}
+        ) : null}
 
-      {item.url ? (
-        <Pressable
-          android_ripple={null}
-          style={({pressed}) => [styles.urlRow, pressed && {opacity: 0.6}]}
-          onPress={handleOpenUrl}>
-          <Text style={styles.urlText} numberOfLines={1}>
-            {item.url}
-          </Text>
-        </Pressable>
-      ) : null}
+        {item.price_cents != null && item.price_cents > 0 && (
+          <View style={styles.priceSection}>
+            <Text style={styles.priceLabel}>Price</Text>
+            <Text style={styles.priceValue}>
+              {(item.price_cents / 100).toLocaleString('en-US', {
+                style: 'currency',
+                currency: item.currency || 'USD',
+              })}
+            </Text>
 
-      {item.price_cents != null && item.price_cents > 0 && (
-        <View style={styles.priceSection}>
-          <Text style={styles.priceLabel}>Price</Text>
-          <Text style={styles.priceValue}>
-            {(item.price_cents / 100).toLocaleString('en-US', {
-              style: 'currency',
-              currency: item.currency || 'USD',
-            })}
-          </Text>
+            <AnimatedProgress progress={progress} />
+            <Text style={styles.progressText}>
+              {item.currency || 'USD'} {(item.total_contributed / 100).toFixed(2)} funded of{' '}
+              {item.currency || 'USD'} {(item.price_cents / 100).toFixed(2)} ({progress}%)
+            </Text>
+          </View>
+        )}
 
-          <AnimatedProgress progress={progress} color={statusColor} />
-          <Text style={styles.progressText}>
-            {item.currency || 'USD'} {(item.total_contributed / 100).toFixed(2)} funded of{' '}
-            {item.currency || 'USD'} {(item.price_cents / 100).toFixed(2)} ({progress}%)
-          </Text>
-        </View>
-      )}
+        {item.reserved && (
+          <View style={styles.reservedBanner}>
+            <Text style={styles.reservedText}>
+              {isReservedByMe ? 'Reserved by you' : 'Reserved'}
+            </Text>
+          </View>
+        )}
 
-      {item.reserved && (
-        <View style={styles.reservedBanner}>
-          <Text style={styles.reservedText}>
-            {isReservedByMe ? 'Reserved by you' : 'Reserved'}
-          </Text>
-        </View>
-      )}
+        {showReserveButton && (
+          <View style={styles.reserveSection}>
+            <Pressable
+              android_ripple={null}
+              style={({pressed}) => [
+                styles.reserveBtn,
+                isReservedByMe && styles.reserveBtnActive,
+                isReservedByOther && styles.reserveBtnDisabled,
+                pressed && styles.pressedState,
+              ]}
+              onPress={handleReserve}
+              disabled={isReservedByOther || reserve.isPending || unreserve.isPending}>
+              {reserve.isPending || unreserve.isPending ? (
+                <ActivityIndicator size="small" color={colors.accent} />
+              ) : (
+                <Text
+                  style={[
+                    styles.reserveBtnText,
+                    isReservedByMe && styles.reserveBtnTextActive,
+                    isReservedByOther && styles.reserveBtnTextDisabled,
+                  ]}>
+                  {isReservedByMe
+                    ? 'Reserved by you · Tap to unreserve'
+                    : isReservedByOther
+                    ? 'Already reserved'
+                    : 'Reserve this item'}
+                </Text>
+              )}
+            </Pressable>
+          </View>
+        )}
 
-      {showReserveButton && (
-        <View style={styles.reserveSection}>
-          <Pressable
-            android_ripple={null}
-            style={({pressed}) => [
-              styles.reserveBtn,
-              isReservedByMe && styles.reserveBtnActive,
-              isReservedByOther && styles.reserveBtnDisabled,
-              pressed && styles.pressedState,
-            ]}
-            onPress={handleReserve}
-            disabled={isReservedByOther || reserve.isPending || unreserve.isPending}>
-            {reserve.isPending || unreserve.isPending ? (
-              <ActivityIndicator size="small" color={colors.primary} />
-            ) : (
-              <Text
-                style={[
-                  styles.reserveBtnText,
-                  isReservedByMe && styles.reserveBtnTextActive,
-                  isReservedByOther && styles.reserveBtnTextDisabled,
-                ]}>
-                {isReservedByMe
-                  ? 'Reserved by you · Tap to unreserve'
-                  : isReservedByOther
-                  ? 'Already reserved'
-                  : 'Reserve this item'}
-              </Text>
-            )}
-          </Pressable>
-        </View>
-      )}
-
-      {item.contributions.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Contributions</Text>
-          {item.contributions.map((c) => (
-            <View key={c.id} style={styles.contributionRow}>
-              <Text style={styles.contributorName}>{c.contributor_display_name}</Text>
-              <Text style={styles.contributionAmount}>
-                {(c.amount_cents / 100).toFixed(2)} {item.currency || 'USD'}
-              </Text>
-            </View>
-          ))}
-        </View>
-      )}
-    </ScrollView>
+        {item.contributions.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Contributions</Text>
+            {item.contributions.map((c) => (
+              <View key={c.id} style={styles.contributionRow}>
+                <Text style={styles.contributorName}>{c.contributor_display_name}</Text>
+                <Text style={styles.contributionAmount}>
+                  {(c.amount_cents / 100).toFixed(2)} {item.currency || 'USD'}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
+      </ScrollView>
+    </GradientBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  scroll: {flex: 1, backgroundColor: colors.white},
-  container: {paddingBottom: 40},
+  container: {paddingBottom: 40, paddingTop: 100},
   center: {flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xxxl},
   errorText: {fontSize: 16, color: colors.status.error},
-  image: {width: '100%', height: 240, backgroundColor: colors.background.secondary},
+  image: {height: 240, backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: borderRadius.xl, marginHorizontal: spacing.lg, marginBottom: spacing.md, overflow: 'hidden'},
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    padding: spacing.lg,
+    paddingHorizontal: spacing.lg,
     paddingBottom: spacing.sm,
   },
-  title: {fontSize: 20, fontWeight: '700' as const, color: colors.text.primary, flex: 1, marginRight: spacing.sm},
-  statusBadge: {borderRadius: borderRadius.sm, paddingHorizontal: spacing.sm, paddingVertical: 3},
-  statusText: {fontSize: 11, fontWeight: '600' as const, textTransform: 'uppercase' as const},
+  title: {fontSize: 22, fontWeight: '700' as const, color: colors.white, flex: 1, marginRight: spacing.sm},
+  statusBadge: {borderRadius: borderRadius.full, paddingHorizontal: spacing.sm, paddingVertical: 3},
+  statusText: {fontSize: 11, fontWeight: '700' as const, textTransform: 'uppercase' as const, letterSpacing: 0.5},
   pressedState: {
-    opacity: 0.92,
-    transform: [{scale: 0.98}],
+    opacity: 0.88,
+    transform: [{scale: 0.97}],
   },
   urlRow: {paddingHorizontal: spacing.lg, marginBottom: spacing.md},
-  urlText: {fontSize: 14, color: colors.primary},
-  priceSection: {paddingHorizontal: spacing.lg, marginBottom: spacing.lg},
-  priceLabel: {fontSize: 12, color: colors.text.secondary, marginBottom: 2},
-  priceValue: {fontSize: 18, fontWeight: '600' as const, color: colors.text.primary},
+  urlText: {fontSize: 14, color: colors.accent},
+  priceSection: {
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
+    backgroundColor: colors.glass.bg,
+    borderWidth: 1,
+    borderColor: colors.glass.border,
+    borderRadius: borderRadius.xl,
+    marginHorizontal: spacing.lg,
+    padding: spacing.lg,
+  },
+  priceLabel: {fontSize: 12, color: colors.text.tertiary, marginBottom: 2},
+  priceValue: {fontSize: 22, fontWeight: '700' as const, color: colors.white},
   progressBar: {
-    height: 6,
-    backgroundColor: colors.border.light,
-    borderRadius: borderRadius.sm,
+    height: 12,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: borderRadius.full,
     marginTop: spacing.md,
     overflow: 'hidden',
   },
-  progressFill: {height: 6, borderRadius: borderRadius.sm},
-  progressText: {fontSize: 12, color: colors.text.secondary, marginTop: spacing.xs},
+  progressFill: {height: 12, borderRadius: borderRadius.full, backgroundColor: colors.primary},
+  progressText: {fontSize: 12, color: colors.text.tertiary, marginTop: spacing.xs},
   reservedBanner: {
     marginHorizontal: spacing.lg,
     backgroundColor: colors.status.success + '15',
@@ -298,14 +306,14 @@ const styles = StyleSheet.create({
   reserveSection: {paddingHorizontal: spacing.lg, marginBottom: spacing.lg},
   reserveBtn: {
     borderWidth: 1.5,
-    borderColor: colors.primary,
-    borderRadius: borderRadius.md,
+    borderColor: colors.accent,
+    borderRadius: 18,
     paddingVertical: spacing.md,
     alignItems: 'center',
   },
-  reserveBtnActive: {backgroundColor: colors.primary},
+  reserveBtnActive: {backgroundColor: colors.primary, borderColor: colors.primary},
   reserveBtnDisabled: {borderColor: colors.border.light},
-  reserveBtnText: {color: colors.primary, fontWeight: '600' as const, fontSize: 15},
+  reserveBtnText: {color: colors.accent, fontWeight: '600' as const, fontSize: 15},
   reserveBtnTextActive: {color: colors.white},
   reserveBtnTextDisabled: {color: colors.text.tertiary},
   section: {paddingHorizontal: spacing.lg, marginBottom: spacing.lg},
@@ -317,15 +325,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border.light,
   },
-  contributorName: {fontSize: 14, color: colors.text.primary},
+  contributorName: {fontSize: 14, color: colors.white},
   contributionAmount: {fontSize: 14, color: colors.text.secondary, fontWeight: '500' as const},
-  editSection: {paddingHorizontal: spacing.lg, marginBottom: spacing.sm},
-  editBtn: {
-    borderWidth: 1.5,
-    borderColor: colors.primary,
-    borderRadius: borderRadius.md,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-  },
-  editBtnText: {color: colors.primary, fontWeight: '600' as const, fontSize: 15},
+  editSection: {paddingHorizontal: spacing.lg, marginBottom: spacing.md},
 });
