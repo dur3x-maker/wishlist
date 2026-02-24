@@ -2,7 +2,7 @@ import React, {useState} from 'react';
 import {
   Text,
   TextInput,
-  TouchableOpacity,
+  Pressable,
   StyleSheet,
   ActivityIndicator,
   Alert,
@@ -65,16 +65,16 @@ export default function RegisterScreen({onLogin}: Props) {
         value={password}
         onChangeText={setPassword}
       />
-      <TouchableOpacity
-        style={styles.button}
+      <Pressable
+        style={({pressed}) => [styles.button, pressed && styles.pressedState]}
         onPress={handleRegister}
         disabled={loading}>
         {loading ? (
-          <ActivityIndicator color="#fff" />
+          <ActivityIndicator color={colors.white} />
         ) : (
           <Text style={styles.buttonText}>Register</Text>
         )}
-      </TouchableOpacity>
+      </Pressable>
     </KeyboardAvoidingView>
   );
 }
@@ -114,5 +114,9 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: 16,
     fontWeight: '600' as const,
+  },
+  pressedState: {
+    opacity: 0.92,
+    transform: [{scale: 0.98}],
   },
 });

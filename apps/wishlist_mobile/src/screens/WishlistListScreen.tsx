@@ -1,9 +1,9 @@
-import React, {useCallback, useState, useEffect} from 'react';
+import React, {useCallback, useState, useEffect, useRef} from 'react';
 import {
   View,
   Text,
   FlatList,
-  TouchableOpacity,
+  Pressable,
   StyleSheet,
   ActivityIndicator,
   Alert,
@@ -15,9 +15,10 @@ import {useFocusEffect} from '@react-navigation/native';
 import {useQuery, useQueryClient} from '@tanstack/react-query';
 import {listWishlists, deleteWishlist} from '../api/wishlists';
 import {WEB_BASE_URL} from '../api/client';
+import {ApiError} from '../api/client';
 import {useAuthContext} from '../hooks/AuthContext';
 import {colors, spacing, typography, shadows, borderRadius} from '../theme';
-import {getTimeRemaining, formatDeadlineDate, getTotalDaysLeft, isExpired} from '../utils/countdown';
+import {getFullCountdown, formatDeadlineDate, getTotalDaysLeft, isExpired} from '../utils/countdown';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import type {RootStackParamList} from '../navigation/types';
 import type {WishlistListItem} from '../types';
@@ -35,10 +36,11 @@ export default function WishlistListScreen({navigation, onLogout}: Props) {
     queryFn: listWishlists,
   });
 
+  // Live countdown: update every second
   useEffect(() => {
     const interval = setInterval(() => {
       setRefreshKey(prev => prev + 1);
-    }, 60000);
+    }, 1000);
     return () => clearInterval(interval);
   }, []);
 
@@ -55,14 +57,18 @@ export default function WishlistListScreen({navigation, onLogout}: Props) {
   React.useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => (
-        <TouchableOpacity onPress={onLogout} style={styles.headerMarginR}>
+        <Pressable
+          onPress={onLogout}
+          style={({pressed}) => [styles.headerMarginR, pressed && styles.headerPressed]}>
           <Text style={styles.headerBtn}>Logout</Text>
-        </TouchableOpacity>
+        </Pressable>
       ),
       headerLeft: () => (
-        <TouchableOpacity onPress={handleCreate} style={styles.headerMarginL}>
+        <Pressable
+          onPress={handleCreate}
+          style={({pressed}) => [styles.headerMarginL, pressed && styles.headerPressed]}>
           <Text style={styles.headerPlus}>+</Text>
-        </TouchableOpacity>
+        </Pressable>
       ),
     });
   }, [navigation, onLogout, handleCreate]);
@@ -70,12 +76,12 @@ export default function WishlistListScreen({navigation, onLogout}: Props) {
   const handleDelete = useCallback(
     (id: string, title: string) => {
       Alert.alert(
-        'Вы уверены?',
-        `Удалить вишлист "${title}"?`,
+        'Delete wishlist',
+        `This will permanently delete "${title}" and all its items. This action cannot be undone.`,
         [
-          {text: 'Отмена', style: 'cancel'},
+          {text: 'Cancel', style: 'cancel'},
           {
-            text: 'Да',
+            text: 'Delete',
             style: 'destructive',
             onPress: async () => {
               try {
@@ -83,7 +89,15 @@ export default function WishlistListScreen({navigation, onLogout}: Props) {
                 queryClient.invalidateQueries({queryKey: ['wishlists']});
               } catch (e: any) {
                 console.error('Delete wishlist failed', e);
-                Alert.alert('Error', e.message ?? 'Delete failed');
+                const status = e instanceof ApiError ? e.status : 0;
+                if (status === 500) {
+                  Alert.alert(
+                    'Cannot delete',
+                    'This wishlist may contain items. Delete all items first, then try again.',
+                  );
+                } else {
+                  Alert.alert('Error', e.message ?? 'Failed to delete wishlist');
+                }
               }
             },
           },
@@ -116,9 +130,11 @@ export default function WishlistListScreen({navigation, onLogout}: Props) {
     return (
       <View style={styles.center}>
         <Text style={styles.errorText}>Failed to load wishlists</Text>
-        <TouchableOpacity onPress={handleRetry} style={styles.retryBtn}>
+        <Pressable
+          onPress={handleRetry}
+          style={({pressed}) => [styles.retryBtn, pressed && styles.pressedCard]}>
           <Text style={styles.retryText}>Retry</Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
     );
   }
@@ -144,45 +160,62 @@ export default function WishlistListScreen({navigation, onLogout}: Props) {
       </View>
       {!hasWishlists ? (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyIcon}>🎁</Text>
-          <Text style={styles.emptyTitle}>Add your first wishlist</Text>
+          <View style={styles.emptyIconCircle}>
+            <Text style={styles.emptyIconPlus}>+</Text>
+          </View>
+          <Text style={styles.emptyTitle}>No wishlists yet</Text>
           <Text style={styles.emptySubtitle}>
             Create a wishlist to organize your wishes and share them with friends
           </Text>
-          <TouchableOpacity style={styles.primaryButton} onPress={handleCreate}>
-            <Text style={styles.primaryButtonText}>Create wishlist</Text>
-          </TouchableOpacity>
+          <Pressable
+            style={({pressed}) => [styles.primaryButton, pressed && styles.pressedCard]}
+            onPress={handleCreate}>
+            <Text style={styles.primaryButtonText}>+ Add your first wishlist</Text>
+          </Pressable>
         </View>
       ) : (
-        <FlatList
-          data={data ?? []}
-          keyExtractor={keyExtractor}
-          renderItem={renderItem}
-          contentContainerStyle={styles.list}
-        />
+        <>
+          <FlatList
+            data={data ?? []}
+            keyExtractor={keyExtractor}
+            renderItem={renderItem}
+            contentContainerStyle={styles.list}
+          />
+          <Pressable
+            style={({pressed}) => [styles.fab, pressed && styles.fabPressed]}
+            onPress={handleCreate}>
+            <Text style={styles.fabText}>+</Text>
+          </Pressable>
+        </>
       )}
     </View>
   );
 }
 
-function SwipeableCard({item, onPress, onDelete, onShare, refreshKey}: any) {
-  const translateX = React.useRef(new Animated.Value(0)).current;
-  const fadeAnim = React.useRef(new Animated.Value(0)).current;
-  const [swiping, setSwiping] = React.useState(false);
-  const [hasAnimated, setHasAnimated] = React.useState(false);
+function SwipeableCard({item, onPress, onDelete, onShare, refreshKey}: {
+  item: WishlistListItem;
+  onPress: () => void;
+  onDelete: () => void;
+  onShare: () => void;
+  refreshKey: number;
+}) {
+  const translateX = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const [swiping, setSwiping] = useState(false);
+  const [hasAnimated, setHasAnimated] = useState(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!hasAnimated) {
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 600,
+        duration: 500,
         useNativeDriver: true,
       }).start();
       setHasAnimated(true);
     }
   }, [fadeAnim, hasAnimated]);
 
-  const panResponder = React.useRef(
+  const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, gestureState) => {
         return Math.abs(gestureState.dx) > 10;
@@ -213,22 +246,23 @@ function SwipeableCard({item, onPress, onDelete, onShare, refreshKey}: any) {
     }),
   ).current;
 
-  const timeLeft = getTimeRemaining(item.deadline);
+  const countdown = getFullCountdown(item.deadline);
   const deadlineDate = formatDeadlineDate(item.deadline);
   const daysLeft = getTotalDaysLeft(item.deadline);
   const expired = isExpired(item.deadline);
 
-  const getDeadlineColor = () => {
-    if (expired) return colors.text.tertiary;
-    if (daysLeft < 3) return colors.status.error;
-    if (daysLeft <= 7) return '#F59E0B';
-    return colors.primary;
-  };
+  const deadlineColor = expired
+    ? colors.text.tertiary
+    : daysLeft < 3
+    ? colors.status.error
+    : daysLeft <= 7
+    ? colors.status.warning
+    : colors.primary;
 
   return (
     <View style={styles.swipeContainer}>
       <View style={styles.deleteBackground}>
-        <TouchableOpacity
+        <Pressable
           style={styles.deleteButton}
           onPress={() => {
             Animated.spring(translateX, {
@@ -237,31 +271,30 @@ function SwipeableCard({item, onPress, onDelete, onShare, refreshKey}: any) {
             }).start();
             onDelete();
           }}>
-          <Text style={styles.deleteText}>🗑️</Text>
-        </TouchableOpacity>
+          <Text style={styles.deleteText}>Delete</Text>
+        </Pressable>
       </View>
       <Animated.View
         style={[styles.cardWrapper, {transform: [{translateX}], opacity: fadeAnim}]}
         {...panResponder.panHandlers}>
-        <TouchableOpacity
-          style={styles.card}
+        <Pressable
+          style={({pressed}) => [styles.card, pressed && !swiping && styles.pressedCard]}
           onPress={onPress}
-          activeOpacity={0.7}
           disabled={swiping}>
           <View style={styles.cardContent}>
             <Text style={styles.cardTitle}>{item.title}</Text>
             {item.description ? (
-              <Text style={styles.cardDesc} numberOfLines={1}>
+              <Text style={styles.cardDesc} numberOfLines={2}>
                 {item.description}
               </Text>
             ) : null}
             {item.deadline && (
-              <View style={styles.deadlineContainer}>
-                <Text style={[styles.deadlineDate, {color: getDeadlineColor()}]}>
+              <View style={styles.deadlineSection}>
+                <Text style={[styles.deadlineDate, {color: deadlineColor}]}>
                   Due {deadlineDate}
                 </Text>
-                <Text style={[styles.timeLeft, {color: getDeadlineColor()}]}>
-                  {timeLeft}
+                <Text style={[styles.countdownText, {color: deadlineColor}]}>
+                  {countdown}
                 </Text>
               </View>
             )}
@@ -269,12 +302,14 @@ function SwipeableCard({item, onPress, onDelete, onShare, refreshKey}: any) {
               <Text style={styles.cardMeta}>
                 {item.item_count} item{item.item_count !== 1 ? 's' : ''}
               </Text>
-              <TouchableOpacity onPress={onShare}>
+              <Pressable
+                onPress={onShare}
+                style={({pressed}) => pressed && styles.headerPressed}>
                 <Text style={styles.shareText}>Share</Text>
-              </TouchableOpacity>
+              </Pressable>
             </View>
           </View>
-        </TouchableOpacity>
+        </Pressable>
       </Animated.View>
     </View>
   );
@@ -301,6 +336,7 @@ const styles = StyleSheet.create({
   },
   list: {
     padding: spacing.lg,
+    paddingBottom: 80,
     flexGrow: 1,
   },
   center: {
@@ -309,8 +345,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: spacing.xxxl,
   },
-  headerMarginR: {marginRight: spacing.xs},
-  headerMarginL: {marginLeft: spacing.xs},
+  headerMarginR: {marginRight: spacing.xs, padding: spacing.xs},
+  headerMarginL: {marginLeft: spacing.xs, padding: spacing.xs},
+  headerPressed: {opacity: 0.6},
   headerBtn: {
     ...typography.small,
     color: colors.primary,
@@ -339,7 +376,9 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
   deleteText: {
-    fontSize: 28,
+    color: colors.white,
+    fontWeight: '600' as const,
+    fontSize: 14,
   },
   cardWrapper: {
     backgroundColor: 'transparent',
@@ -349,6 +388,10 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.xl,
     padding: spacing.lg,
     ...shadows.md,
+  },
+  pressedCard: {
+    opacity: 0.92,
+    transform: [{scale: 0.98}],
   },
   cardContent: {
     flex: 1,
@@ -363,27 +406,26 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     marginBottom: spacing.sm,
   },
-  deadlineContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  deadlineSection: {
     marginBottom: spacing.sm,
-    gap: spacing.sm,
+    gap: 2,
   },
   deadlineDate: {
-    fontSize: 12,
-    fontWeight: '400',
-    lineHeight: 16,
+    ...typography.caption,
+    fontWeight: '500' as const,
   },
-  timeLeft: {
-    fontSize: 12,
-    fontWeight: '600',
-    lineHeight: 16,
+  countdownText: {
+    ...typography.caption,
+    fontWeight: '600' as const,
   },
   metaRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: spacing.sm,
+    paddingTop: spacing.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border.light,
   },
   cardMeta: {
     ...typography.caption,
@@ -414,14 +456,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: spacing.xxxl,
   },
-  emptyIcon: {
-    fontSize: 64,
+  emptyIconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 2,
+    borderColor: colors.border.light,
+    borderStyle: 'dashed',
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: spacing.xl,
   },
+  emptyIconPlus: {
+    fontSize: 32,
+    color: colors.text.tertiary,
+    lineHeight: 36,
+  },
   emptyTitle: {
-    ...typography.h3,
+    ...typography.h4,
     color: colors.text.primary,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
     textAlign: 'center',
   },
   emptySubtitle: {
@@ -441,5 +495,26 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     ...typography.bodyBold,
     color: colors.white,
+  },
+  fab: {
+    position: 'absolute',
+    right: spacing.xl,
+    bottom: spacing.xxl,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...shadows.lg,
+  },
+  fabPressed: {
+    opacity: 0.92,
+    transform: [{scale: 0.95}],
+  },
+  fabText: {
+    fontSize: 28,
+    color: colors.white,
+    lineHeight: 30,
   },
 });

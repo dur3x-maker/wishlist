@@ -3,7 +3,7 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
+  Pressable,
   StyleSheet,
   ActivityIndicator,
   Alert,
@@ -170,11 +170,11 @@ export default function EditItemScreen({route, navigation}: Props) {
             autoCapitalize="none"
             keyboardType="url"
           />
-          <TouchableOpacity
-            style={styles.pickBtn}
+          <Pressable
+            style={({pressed}) => [styles.pickBtn, pressed && styles.pressedState]}
             onPress={handlePickImage}>
             <Text style={styles.pickBtnText}>Gallery</Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
         {resolvedImage ? (
           <Image
@@ -184,8 +184,8 @@ export default function EditItemScreen({route, navigation}: Props) {
           />
         ) : null}
 
-        <TouchableOpacity
-          style={styles.button}
+        <Pressable
+          style={({pressed}) => [styles.button, pressed && styles.pressedState]}
           onPress={handleSave}
           disabled={loading}>
           {loading ? (
@@ -193,7 +193,7 @@ export default function EditItemScreen({route, navigation}: Props) {
           ) : (
             <Text style={styles.buttonText}>Save Changes</Text>
           )}
-        </TouchableOpacity>
+        </Pressable>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -244,4 +244,8 @@ const styles = StyleSheet.create({
     marginTop: spacing.xxxl,
   },
   buttonText: {color: colors.white, fontSize: 16, fontWeight: '600' as const},
+  pressedState: {
+    opacity: 0.92,
+    transform: [{scale: 0.98}],
+  },
 });

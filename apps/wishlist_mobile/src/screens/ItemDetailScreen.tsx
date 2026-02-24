@@ -6,14 +6,16 @@ import {
   StyleSheet,
   Image,
   Linking,
-  TouchableOpacity,
+  Pressable,
   Alert,
   ActivityIndicator,
+  Animated,
 } from 'react-native';
 import {useFocusEffect} from '@react-navigation/native';
 import {useWishlistDetail} from '../hooks/useWishlistDetail';
 import {useReserve} from '../hooks/useReserve';
 import {useAuthContext} from '../hooks/AuthContext';
+import {colors, spacing, borderRadius, shadows} from '../theme';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import type {RootStackParamList} from '../navigation/types';
 import type {Item} from '../types';
@@ -22,11 +24,34 @@ import {resolveImageUrl} from '../utils/imageUrl';
 type Props = NativeStackScreenProps<RootStackParamList, 'ItemDetail'>;
 
 const STATUS_COLORS: Record<string, string> = {
-  active: '#22c55e',
-  funded: '#6C63FF',
-  expired: '#f59e0b',
+  active: colors.status.success,
+  funded: colors.primary,
+  expired: colors.status.warning,
 };
-const DEFAULT_STATUS_COLOR = '#9ca3af';
+const DEFAULT_STATUS_COLOR = colors.text.tertiary;
+
+function AnimatedProgress({progress, color}: {progress: number; color: string}) {
+  const anim = React.useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    Animated.timing(anim, {
+      toValue: progress,
+      duration: 600,
+      useNativeDriver: false,
+    }).start();
+  }, [anim, progress]);
+
+  const width = anim.interpolate({
+    inputRange: [0, 100],
+    outputRange: ['0%', '100%'],
+  });
+
+  return (
+    <View style={styles.progressBar}>
+      <Animated.View style={[styles.progressFill, {width, backgroundColor: color}]} />
+    </View>
+  );
+}
 
 export default function ItemDetailScreen({route, navigation}: Props) {
   const {wishlistId, itemId} = route.params;
@@ -133,18 +158,22 @@ export default function ItemDetailScreen({route, navigation}: Props) {
 
       {isOwner && (
         <View style={styles.editSection}>
-          <TouchableOpacity style={styles.editBtn} onPress={handleEdit}>
+          <Pressable
+            style={({pressed}) => [styles.editBtn, pressed && styles.pressedState]}
+            onPress={handleEdit}>
             <Text style={styles.editBtnText}>Edit Item</Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
       )}
 
       {item.url ? (
-        <TouchableOpacity style={styles.urlRow} onPress={handleOpenUrl}>
+        <Pressable
+          style={({pressed}) => [styles.urlRow, pressed && {opacity: 0.6}]}
+          onPress={handleOpenUrl}>
           <Text style={styles.urlText} numberOfLines={1}>
             {item.url}
           </Text>
-        </TouchableOpacity>
+        </Pressable>
       ) : null}
 
       {item.price_cents != null && item.price_cents > 0 && (
@@ -157,14 +186,7 @@ export default function ItemDetailScreen({route, navigation}: Props) {
             })}
           </Text>
 
-          <View style={styles.progressBar}>
-            <View
-              style={[
-                styles.progressFill,
-                {width: `${progress}%`, backgroundColor: statusColor},
-              ]}
-            />
-          </View>
+          <AnimatedProgress progress={progress} color={statusColor} />
           <Text style={styles.progressText}>
             {item.currency || 'USD'} {(item.total_contributed / 100).toFixed(2)} funded of{' '}
             {item.currency || 'USD'} {(item.price_cents / 100).toFixed(2)} ({progress}%)
@@ -182,16 +204,17 @@ export default function ItemDetailScreen({route, navigation}: Props) {
 
       {showReserveButton && (
         <View style={styles.reserveSection}>
-          <TouchableOpacity
-            style={[
+          <Pressable
+            style={({pressed}) => [
               styles.reserveBtn,
               isReservedByMe && styles.reserveBtnActive,
               isReservedByOther && styles.reserveBtnDisabled,
+              pressed && styles.pressedState,
             ]}
             onPress={handleReserve}
             disabled={isReservedByOther || reserve.isPending || unreserve.isPending}>
             {reserve.isPending || unreserve.isPending ? (
-              <ActivityIndicator size="small" color="#6C63FF" />
+              <ActivityIndicator size="small" color={colors.primary} />
             ) : (
               <Text
                 style={[
@@ -206,7 +229,7 @@ export default function ItemDetailScreen({route, navigation}: Props) {
                   : 'Reserve this item'}
               </Text>
             )}
-          </TouchableOpacity>
+          </Pressable>
         </View>
       )}
 
@@ -228,74 +251,78 @@ export default function ItemDetailScreen({route, navigation}: Props) {
 }
 
 const styles = StyleSheet.create({
-  scroll: {flex: 1, backgroundColor: '#fff'},
+  scroll: {flex: 1, backgroundColor: colors.white},
   container: {paddingBottom: 40},
-  center: {flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32},
-  errorText: {fontSize: 16, color: '#e53e3e'},
-  image: {width: '100%', height: 240, backgroundColor: '#f3f4f6'},
+  center: {flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xxxl},
+  errorText: {fontSize: 16, color: colors.status.error},
+  image: {width: '100%', height: 240, backgroundColor: colors.background.secondary},
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    padding: 16,
-    paddingBottom: 8,
+    padding: spacing.lg,
+    paddingBottom: spacing.sm,
   },
-  title: {fontSize: 20, fontWeight: '700', color: '#1a1a1a', flex: 1, marginRight: 8},
-  statusBadge: {borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3},
-  statusText: {fontSize: 11, fontWeight: '600', textTransform: 'uppercase'},
-  urlRow: {paddingHorizontal: 16, marginBottom: 12},
-  urlText: {fontSize: 14, color: '#6C63FF'},
-  priceSection: {paddingHorizontal: 16, marginBottom: 16},
-  priceLabel: {fontSize: 12, color: '#888', marginBottom: 2},
-  priceValue: {fontSize: 18, fontWeight: '600', color: '#1a1a1a'},
+  title: {fontSize: 20, fontWeight: '700' as const, color: colors.text.primary, flex: 1, marginRight: spacing.sm},
+  statusBadge: {borderRadius: borderRadius.sm, paddingHorizontal: spacing.sm, paddingVertical: 3},
+  statusText: {fontSize: 11, fontWeight: '600' as const, textTransform: 'uppercase' as const},
+  pressedState: {
+    opacity: 0.92,
+    transform: [{scale: 0.98}],
+  },
+  urlRow: {paddingHorizontal: spacing.lg, marginBottom: spacing.md},
+  urlText: {fontSize: 14, color: colors.primary},
+  priceSection: {paddingHorizontal: spacing.lg, marginBottom: spacing.lg},
+  priceLabel: {fontSize: 12, color: colors.text.secondary, marginBottom: 2},
+  priceValue: {fontSize: 18, fontWeight: '600' as const, color: colors.text.primary},
   progressBar: {
     height: 6,
-    backgroundColor: '#e5e7eb',
-    borderRadius: 3,
-    marginTop: 10,
+    backgroundColor: colors.border.light,
+    borderRadius: borderRadius.sm,
+    marginTop: spacing.md,
     overflow: 'hidden',
   },
-  progressFill: {height: 6, borderRadius: 3},
-  progressText: {fontSize: 12, color: '#888', marginTop: 4},
+  progressFill: {height: 6, borderRadius: borderRadius.sm},
+  progressText: {fontSize: 12, color: colors.text.secondary, marginTop: spacing.xs},
   reservedBanner: {
-    marginHorizontal: 16,
-    backgroundColor: '#ecfdf5',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
+    marginHorizontal: spacing.lg,
+    backgroundColor: colors.status.success + '15',
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
   },
-  reservedText: {color: '#16a34a', fontWeight: '600', fontSize: 14},
-  reserveSection: {paddingHorizontal: 16, marginBottom: 16},
+  reservedText: {color: colors.status.success, fontWeight: '600' as const, fontSize: 14},
+  reserveSection: {paddingHorizontal: spacing.lg, marginBottom: spacing.lg},
   reserveBtn: {
     borderWidth: 1.5,
-    borderColor: '#6C63FF',
-    borderRadius: 8,
-    paddingVertical: 12,
+    borderColor: colors.primary,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.md,
     alignItems: 'center',
   },
-  reserveBtnActive: {backgroundColor: '#6C63FF'},
-  reserveBtnDisabled: {borderColor: '#e5e7eb'},
-  reserveBtnText: {color: '#6C63FF', fontWeight: '600', fontSize: 15},
-  reserveBtnTextActive: {color: '#fff'},
-  reserveBtnTextDisabled: {color: '#9ca3af'},
-  section: {paddingHorizontal: 16, marginBottom: 16},
-  sectionTitle: {fontSize: 14, fontWeight: '600', color: '#555', marginBottom: 8},
+  reserveBtnActive: {backgroundColor: colors.primary},
+  reserveBtnDisabled: {borderColor: colors.border.light},
+  reserveBtnText: {color: colors.primary, fontWeight: '600' as const, fontSize: 15},
+  reserveBtnTextActive: {color: colors.white},
+  reserveBtnTextDisabled: {color: colors.text.tertiary},
+  section: {paddingHorizontal: spacing.lg, marginBottom: spacing.lg},
+  sectionTitle: {fontSize: 14, fontWeight: '600' as const, color: colors.text.secondary, marginBottom: spacing.sm},
   contributionRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 6,
+    paddingVertical: spacing.xs,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#eee',
+    borderBottomColor: colors.border.light,
   },
-  contributorName: {fontSize: 14, color: '#333'},
-  contributionAmount: {fontSize: 14, color: '#555', fontWeight: '500'},
-  editSection: {paddingHorizontal: 16, marginBottom: 8},
+  contributorName: {fontSize: 14, color: colors.text.primary},
+  contributionAmount: {fontSize: 14, color: colors.text.secondary, fontWeight: '500' as const},
+  editSection: {paddingHorizontal: spacing.lg, marginBottom: spacing.sm},
   editBtn: {
     borderWidth: 1.5,
-    borderColor: '#6C63FF',
-    borderRadius: 8,
-    paddingVertical: 10,
+    borderColor: colors.primary,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.md,
     alignItems: 'center',
   },
-  editBtnText: {color: '#6C63FF', fontWeight: '600', fontSize: 15},
+  editBtnText: {color: colors.primary, fontWeight: '600' as const, fontSize: 15},
 });

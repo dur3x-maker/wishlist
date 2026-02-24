@@ -3,7 +3,7 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
+  Pressable,
   StyleSheet,
   ActivityIndicator,
   Alert,
@@ -100,19 +100,19 @@ export default function CreateWishlistScreen({navigation}: Props) {
         </View>
 
         <Text style={styles.label}>Deadline (optional)</Text>
-        <TouchableOpacity
-          style={styles.dateButton}
+        <Pressable
+          style={({pressed}) => [styles.dateButton, pressed && styles.pressedState]}
           onPress={() => setShowDatePicker(true)}>
           <Text style={deadline ? styles.dateText : styles.datePlaceholder}>
             {deadline ? formatDeadlineDate(deadline.toISOString()) : 'Select deadline'}
           </Text>
-        </TouchableOpacity>
+        </Pressable>
         {deadline && (
-          <TouchableOpacity
-            style={styles.clearButton}
+          <Pressable
+            style={({pressed}) => [styles.clearButton, pressed && {opacity: 0.6}]}
             onPress={() => setDeadline(null)}>
             <Text style={styles.clearButtonText}>Clear deadline</Text>
-          </TouchableOpacity>
+          </Pressable>
         )}
         <Text style={styles.hint}>
           Items will expire after this date. Max 3 years from now.
@@ -128,16 +128,16 @@ export default function CreateWishlistScreen({navigation}: Props) {
           />
         )}
 
-        <TouchableOpacity
-          style={styles.button}
+        <Pressable
+          style={({pressed}) => [styles.button, pressed && styles.pressedState]}
           onPress={handleCreate}
           disabled={loading}>
           {loading ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={colors.white} />
           ) : (
             <Text style={styles.buttonText}>Create Wishlist</Text>
           )}
-        </TouchableOpacity>
+        </Pressable>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
   container: {padding: spacing.xxl, backgroundColor: colors.white, flexGrow: 1},
   label: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '600' as const,
     color: colors.text.secondary,
     marginBottom: spacing.xs,
     marginTop: spacing.lg,
@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
   clearButtonText: {
     fontSize: 13,
     color: colors.primary,
-    fontWeight: '600',
+    fontWeight: '600' as const,
   },
   hint: {
     fontSize: 12,
@@ -204,5 +204,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: spacing.xxxl,
   },
-  buttonText: {color: colors.white, fontSize: 16, fontWeight: '600'},
+  buttonText: {color: colors.white, fontSize: 16, fontWeight: '600' as const},
+  pressedState: {
+    opacity: 0.92,
+    transform: [{scale: 0.98}],
+  },
 });

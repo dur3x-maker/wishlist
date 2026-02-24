@@ -3,7 +3,7 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
+  Pressable,
   StyleSheet,
   ActivityIndicator,
   Alert,
@@ -134,8 +134,8 @@ export default function CreateItemScreen({route, navigation}: Props) {
             keyboardType="url"
             onBlur={handleScrape}
           />
-          <TouchableOpacity
-            style={styles.scrapeBtn}
+          <Pressable
+            style={({pressed}) => [styles.scrapeBtn, pressed && styles.pressedState]}
             onPress={handleScrape}
             disabled={scraping || !url.trim()}>
             {scraping ? (
@@ -143,7 +143,7 @@ export default function CreateItemScreen({route, navigation}: Props) {
             ) : (
               <Text style={styles.scrapeBtnText}>Autofill</Text>
             )}
-          </TouchableOpacity>
+          </Pressable>
         </View>
 
         <Text style={styles.label}>Title *</Text>
@@ -189,12 +189,11 @@ export default function CreateItemScreen({route, navigation}: Props) {
             autoCapitalize="none"
             keyboardType="url"
           />
-          <TouchableOpacity
-            style={styles.pickBtn}
-            onPress={handlePickImage}
-            disabled={false}>
+          <Pressable
+            style={({pressed}) => [styles.pickBtn, pressed && styles.pressedState]}
+            onPress={handlePickImage}>
             <Text style={styles.pickBtnText}>Gallery</Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
         {imageUrl ? (
           <Image
@@ -204,8 +203,8 @@ export default function CreateItemScreen({route, navigation}: Props) {
           />
         ) : null}
 
-        <TouchableOpacity
-          style={styles.button}
+        <Pressable
+          style={({pressed}) => [styles.button, pressed && styles.pressedState]}
           onPress={handleCreate}
           disabled={loading}>
           {loading ? (
@@ -213,7 +212,7 @@ export default function CreateItemScreen({route, navigation}: Props) {
           ) : (
             <Text style={styles.buttonText}>Add Item</Text>
           )}
-        </TouchableOpacity>
+        </Pressable>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -272,4 +271,8 @@ const styles = StyleSheet.create({
     marginTop: spacing.xxxl,
   },
   buttonText: {color: colors.white, fontSize: 16, fontWeight: '600' as const},
+  pressedState: {
+    opacity: 0.92,
+    transform: [{scale: 0.98}],
+  },
 });

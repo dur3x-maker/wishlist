@@ -3,7 +3,7 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
+  Pressable,
   StyleSheet,
   ActivityIndicator,
   Alert,
@@ -104,36 +104,38 @@ export default function LoginScreen({navigation, onLogin}: Props) {
         value={password}
         onChangeText={setPassword}
       />
-      <TouchableOpacity
-        style={styles.button}
+      <Pressable
+        style={({pressed}) => [styles.button, pressed && styles.pressedState]}
         onPress={handleLogin}
         disabled={loading || googleLoading}>
         {loading ? (
-          <ActivityIndicator color="#fff" />
+          <ActivityIndicator color={colors.white} />
         ) : (
           <Text style={styles.buttonText}>Sign In</Text>
         )}
-      </TouchableOpacity>
+      </Pressable>
 
       <View style={styles.divider}>
         <View style={styles.dividerLine} />
         <Text style={styles.dividerText}>or</Text>
         <View style={styles.dividerLine} />
       </View>
-      <TouchableOpacity
-        style={styles.googleButton}
+      <Pressable
+        style={({pressed}) => [styles.googleButton, pressed && styles.pressedState]}
         onPress={handleGoogleLogin}
         disabled={loading || googleLoading}>
         {googleLoading ? (
-          <ActivityIndicator color="#333" />
+          <ActivityIndicator color={colors.text.primary} />
         ) : (
           <Text style={styles.googleButtonText}>Sign in with Google</Text>
         )}
-      </TouchableOpacity>
+      </Pressable>
 
-      <TouchableOpacity style={styles.link} onPress={navigateToRegister}>
+      <Pressable
+        style={({pressed}) => [styles.link, pressed && {opacity: 0.6}]}
+        onPress={navigateToRegister}>
         <Text style={styles.linkText}>Don't have an account? Register</Text>
-      </TouchableOpacity>
+      </Pressable>
     </KeyboardAvoidingView>
   );
 }
@@ -209,5 +211,9 @@ const styles = StyleSheet.create({
   linkText: {
     color: colors.primary,
     fontSize: 14,
+  },
+  pressedState: {
+    opacity: 0.92,
+    transform: [{scale: 0.98}],
   },
 });

@@ -3,7 +3,7 @@ import {
   View,
   Text,
   FlatList,
-  TouchableOpacity,
+  Pressable,
   StyleSheet,
   ActivityIndicator,
   Alert,
@@ -29,32 +29,38 @@ type Props = NativeStackScreenProps<RootStackParamList, 'WishlistDetail'>;
 const STATUS_COLORS: Record<string, string> = {
   active: colors.status.success,
   funded: colors.primary,
-  expired: '#f59e0b',
+  expired: colors.status.warning,
 };
 const DEFAULT_STATUS_COLOR = colors.text.tertiary;
 
-function ProgressBar({item}: {item: Item}) {
+function AnimatedProgressBar({item}: {item: Item}) {
   const progressAnim = React.useRef(new Animated.Value(0)).current;
-  const [hasAnimated, setHasAnimated] = React.useState(false);
+  const hasAnimatedRef = React.useRef(false);
 
-  if (item.price_cents == null || item.price_cents <= 0) {
-    return null;
-  }
-  const progress = Math.min(100, Math.round((item.total_contributed / item.price_cents) * 100));
+  const progress = item.price_cents != null && item.price_cents > 0
+    ? Math.min(100, Math.round((item.total_contributed / item.price_cents) * 100))
+    : 0;
   const funded = (item.total_contributed / 100).toFixed(2);
-  const total = (item.price_cents / 100).toFixed(2);
+  const total = item.price_cents != null ? (item.price_cents / 100).toFixed(2) : '0.00';
   const cur = item.currency || 'USD';
 
   React.useEffect(() => {
-    if (!hasAnimated) {
+    if (!hasAnimatedRef.current) {
       Animated.timing(progressAnim, {
         toValue: progress,
         duration: 600,
         useNativeDriver: false,
       }).start();
-      setHasAnimated(true);
+      hasAnimatedRef.current = true;
+    } else {
+      // Smooth update on contribution changes
+      Animated.timing(progressAnim, {
+        toValue: progress,
+        duration: 300,
+        useNativeDriver: false,
+      }).start();
     }
-  }, [progressAnim, progress, hasAnimated]);
+  }, [progressAnim, progress]);
 
   const animatedWidth = progressAnim.interpolate({
     inputRange: [0, 100],
@@ -66,9 +72,39 @@ function ProgressBar({item}: {item: Item}) {
       <View style={styles.progressTrack}>
         <Animated.View style={[styles.progressFill, {width: animatedWidth}]} />
       </View>
-      <Text style={styles.progressLabel}>
-        {cur} {funded} of {cur} {total} ({progress}%)
-      </Text>
+      {item.price_cents != null && item.price_cents > 0 && (
+        <Text style={styles.progressLabel}>
+          {cur} {funded} of {cur} {total} ({progress}%)
+        </Text>
+      )}
+    </View>
+  );
+}
+
+function SummaryBlock({items}: {items: Item[]}) {
+  const totalItems = items.length;
+  const totalValueCents = items.reduce((s, i) => s + (i.price_cents ?? 0), 0);
+  const totalFundedCents = items.reduce((s, i) => s + i.total_contributed, 0);
+  const fundedPct = totalValueCents > 0
+    ? Math.round((totalFundedCents / totalValueCents) * 100)
+    : 0;
+
+  return (
+    <View style={styles.summaryBlock}>
+      <View style={styles.summaryItem}>
+        <Text style={styles.summaryValue}>{totalItems}</Text>
+        <Text style={styles.summaryLabel}>Items</Text>
+      </View>
+      <View style={styles.summaryDivider} />
+      <View style={styles.summaryItem}>
+        <Text style={styles.summaryValue}>${(totalValueCents / 100).toFixed(0)}</Text>
+        <Text style={styles.summaryLabel}>Total</Text>
+      </View>
+      <View style={styles.summaryDivider} />
+      <View style={styles.summaryItem}>
+        <Text style={styles.summaryValue}>{fundedPct}%</Text>
+        <Text style={styles.summaryLabel}>Funded</Text>
+      </View>
     </View>
   );
 }
@@ -112,13 +148,17 @@ export default function WishlistDetailScreen({route, navigation}: Props) {
       headerRight: () => (
         <View style={styles.headerRight}>
           {wishlist?.access_token ? (
-            <TouchableOpacity onPress={handleShare}>
+            <Pressable
+              onPress={handleShare}
+              style={({pressed}) => pressed && styles.headerPressed}>
               <Text style={styles.headerBtn}>Share</Text>
-            </TouchableOpacity>
+            </Pressable>
           ) : null}
-          <TouchableOpacity onPress={handleAddItem}>
+          <Pressable
+            onPress={handleAddItem}
+            style={({pressed}) => pressed && styles.headerPressed}>
             <Text style={styles.headerPlus}>+</Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
       ),
     });
@@ -210,9 +250,11 @@ export default function WishlistDetailScreen({route, navigation}: Props) {
     return (
       <View style={styles.center}>
         <Text style={styles.errorText}>Failed to load wishlist</Text>
-        <TouchableOpacity onPress={handleRetry} style={styles.retryBtn}>
+        <Pressable
+          onPress={handleRetry}
+          style={({pressed}) => [styles.retryBtn, pressed && styles.pressedState]}>
           <Text style={styles.retryText}>Retry</Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
     );
   }
@@ -227,9 +269,8 @@ export default function WishlistDetailScreen({route, navigation}: Props) {
     const showReserveButton = item.status === 'active' && !isOwner;
 
     return (
-      <TouchableOpacity
-        style={styles.card}
-        activeOpacity={0.7}
+      <Pressable
+        style={({pressed}) => [styles.card, pressed && styles.pressedState]}
         onPress={() => navigation.navigate('ItemDetail', {wishlistId, itemId: item.id})}>
         {resolveImageUrl(item.image_url) ? (
           <Image
@@ -259,14 +300,15 @@ export default function WishlistDetailScreen({route, navigation}: Props) {
             </Text>
           )}
 
-          <ProgressBar item={item} />
+          <AnimatedProgressBar item={item} />
 
           {showReserveButton && (
-            <TouchableOpacity
-              style={[
+            <Pressable
+              style={({pressed}) => [
                 styles.reserveBtn,
                 isReservedByMe && styles.reserveBtnActive,
                 isReservedByOther && styles.reserveBtnDisabled,
+                pressed && styles.pressedState,
               ]}
               onPress={() => handleReservePress(item)}
               disabled={isReservedByOther || reserve.isPending}>
@@ -286,32 +328,51 @@ export default function WishlistDetailScreen({route, navigation}: Props) {
                     : 'Reserve'}
                 </Text>
               )}
-            </TouchableOpacity>
+            </Pressable>
           )}
         </View>
-      </TouchableOpacity>
+      </Pressable>
     );
   };
 
   return (
-    <>
+    <View style={styles.screenContainer}>
       <FlatList
         data={wishlist.items}
         keyExtractor={keyExtractor}
         renderItem={renderItem}
         contentContainerStyle={styles.list}
         ListHeaderComponent={
-          wishlist.description ? (
-            <Text style={styles.description}>{wishlist.description}</Text>
-          ) : null
+          <>
+            {wishlist.description ? (
+              <Text style={styles.description}>{wishlist.description}</Text>
+            ) : null}
+            {wishlist.items.length > 0 && <SummaryBlock items={wishlist.items} />}
+          </>
         }
         ListEmptyComponent={
-          <View style={styles.center}>
-            <Text style={styles.emptyText}>No items yet.</Text>
-            <Text style={styles.emptyHint}>Tap + to add one.</Text>
+          <View style={styles.emptyCenter}>
+            <View style={styles.emptyIconCircle}>
+              <Text style={styles.emptyIconPlus}>+</Text>
+            </View>
+            <Text style={styles.emptyText}>No items yet</Text>
+            <Text style={styles.emptyHint}>Add your first item to get started</Text>
+            <Pressable
+              style={({pressed}) => [styles.emptyCta, pressed && styles.pressedState]}
+              onPress={handleAddItem}>
+              <Text style={styles.emptyCtaText}>+ Add your first item</Text>
+            </Pressable>
           </View>
         }
       />
+
+      {wishlist.items.length > 0 && (
+        <Pressable
+          style={({pressed}) => [styles.fab, pressed && styles.fabPressed]}
+          onPress={handleAddItem}>
+          <Text style={styles.fabText}>+</Text>
+        </Pressable>
+      )}
 
       <Modal
         visible={!!reserveModal}
@@ -325,16 +386,19 @@ export default function WishlistDetailScreen({route, navigation}: Props) {
             <TextInput
               style={styles.modalInput}
               placeholder="e.g. John"
+              placeholderTextColor={colors.text.tertiary}
               value={displayName}
               onChangeText={setDisplayName}
               autoFocus
             />
             <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.modalCancel} onPress={closeModal}>
+              <Pressable
+                style={({pressed}) => [styles.modalCancel, pressed && styles.pressedState]}
+                onPress={closeModal}>
                 <Text style={styles.modalCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.modalConfirm}
+              </Pressable>
+              <Pressable
+                style={({pressed}) => [styles.modalConfirm, pressed && styles.pressedState]}
                 onPress={submitReserve}
                 disabled={reserve.isPending}>
                 {reserve.isPending ? (
@@ -342,22 +406,57 @@ export default function WishlistDetailScreen({route, navigation}: Props) {
                 ) : (
                   <Text style={styles.modalConfirmText}>Confirm</Text>
                 )}
-              </TouchableOpacity>
+              </Pressable>
             </View>
           </View>
         </View>
       </Modal>
-    </>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  list: {padding: spacing.lg, flexGrow: 1},
+  screenContainer: {flex: 1, backgroundColor: colors.background.secondary},
+  list: {padding: spacing.lg, paddingBottom: 80, flexGrow: 1},
   center: {flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xxxl},
-  description: {fontSize: 14, color: colors.text.secondary, marginBottom: spacing.lg},
+  description: {
+    ...typography.small,
+    color: colors.text.secondary,
+    marginBottom: spacing.lg,
+  },
   headerRight: {flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginRight: spacing.xs},
   headerBtn: {color: colors.primary, fontSize: 15},
   headerPlus: {color: colors.primary, fontSize: 24, lineHeight: 28},
+  headerPressed: {opacity: 0.6},
+  pressedState: {
+    opacity: 0.92,
+    transform: [{scale: 0.98}],
+  },
+  summaryBlock: {
+    flexDirection: 'row',
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.md,
+    padding: spacing.lg,
+    marginBottom: spacing.lg,
+    ...shadows.sm,
+  },
+  summaryItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  summaryValue: {
+    ...typography.h5,
+    color: colors.text.primary,
+  },
+  summaryLabel: {
+    ...typography.caption,
+    color: colors.text.tertiary,
+    marginTop: 2,
+  },
+  summaryDivider: {
+    width: StyleSheet.hairlineWidth,
+    backgroundColor: colors.border.light,
+  },
   card: {
     backgroundColor: colors.white,
     borderRadius: borderRadius.xl,
@@ -408,8 +507,70 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
   },
   retryText: {color: colors.white, fontWeight: '600' as const},
-  emptyText: {fontSize: 18, color: colors.text.secondary, fontWeight: '600' as const},
-  emptyHint: {fontSize: 14, color: colors.text.tertiary, marginTop: spacing.xs},
+  emptyCenter: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: spacing.huge,
+  },
+  emptyIconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: 2,
+    borderColor: colors.border.light,
+    borderStyle: 'dashed',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
+  emptyIconPlus: {
+    fontSize: 28,
+    color: colors.text.tertiary,
+    lineHeight: 32,
+  },
+  emptyText: {
+    ...typography.h5,
+    color: colors.text.primary,
+    marginBottom: spacing.xs,
+  },
+  emptyHint: {
+    ...typography.small,
+    color: colors.text.tertiary,
+    marginBottom: spacing.xxl,
+  },
+  emptyCta: {
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xxl,
+    ...shadows.md,
+  },
+  emptyCtaText: {
+    ...typography.bodyBold,
+    color: colors.white,
+  },
+  fab: {
+    position: 'absolute',
+    right: spacing.xl,
+    bottom: spacing.xxl,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...shadows.lg,
+  },
+  fabPressed: {
+    opacity: 0.92,
+    transform: [{scale: 0.95}],
+  },
+  fabText: {
+    fontSize: 28,
+    color: colors.white,
+    lineHeight: 30,
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',
