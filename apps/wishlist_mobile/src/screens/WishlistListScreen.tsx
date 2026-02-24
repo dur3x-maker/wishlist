@@ -214,18 +214,20 @@ const SwipeableCard = memo(function SwipeableCard({item, onPress, onDelete, onSh
   const translateX = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const [swiping, setSwiping] = useState(false);
-  const [hasAnimated, setHasAnimated] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    if (!hasAnimated) {
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 500,
-        useNativeDriver: true,
-      }).start();
-      setHasAnimated(true);
-    }
-  }, [fadeAnim, hasAnimated]);
+    // Force swipe position to zero on mount
+    translateX.setValue(0);
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 500,
+      useNativeDriver: true,
+    }).start(() => {
+      // Only show delete background after card is fully opaque
+      setMounted(true);
+    });
+  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
 
   const panResponder = useRef(
     PanResponder.create({
@@ -263,20 +265,22 @@ const SwipeableCard = memo(function SwipeableCard({item, onPress, onDelete, onSh
 
   return (
     <View style={styles.swipeContainer}>
-      <View style={styles.deleteBackground}>
-        <Pressable
-          android_ripple={null}
-          style={styles.deleteButton}
-          onPress={() => {
-            Animated.spring(translateX, {
-              toValue: 0,
-              useNativeDriver: true,
-            }).start();
-            onDelete();
-          }}>
-          <Text style={styles.deleteText}>Delete</Text>
-        </Pressable>
-      </View>
+      {mounted && (
+        <View style={styles.deleteBackground}>
+          <Pressable
+            android_ripple={null}
+            style={styles.deleteButton}
+            onPress={() => {
+              Animated.spring(translateX, {
+                toValue: 0,
+                useNativeDriver: true,
+              }).start();
+              onDelete();
+            }}>
+            <Text style={styles.deleteText}>Delete</Text>
+          </Pressable>
+        </View>
+      )}
       <Animated.View
         style={[styles.cardWrapper, {transform: [{translateX}], opacity: fadeAnim}]}
         {...panResponder.panHandlers}>
