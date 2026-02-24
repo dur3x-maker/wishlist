@@ -28,9 +28,9 @@ export default function SecondaryButton({title, onPress, loading, disabled, styl
 
 const styles = StyleSheet.create({
   button: {
-    borderRadius: 18,
-    paddingVertical: 16,
-    paddingHorizontal: spacing.xxl,
+    height: 58,
+    borderRadius: 22,
+    width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
@@ -38,10 +38,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(124,58,237,0.08)',
   },
   text: {
-    color: colors.accent,
+    color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: 0.3,
+    fontWeight: '600',
+    letterSpacing: 0.2,
   },
   pressed: {
     opacity: 0.88,

@@ -206,11 +206,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   googleButton: {
+    height: 58,
     borderWidth: 1,
     borderColor: colors.glass.borderLight,
-    borderRadius: 18,
-    padding: spacing.lg,
+    borderRadius: 22,
     alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: colors.glass.bgLight,
   },
   googleButtonText: {

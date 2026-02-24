@@ -35,17 +35,17 @@ export default function PrimaryButton({title, onPress, loading, disabled, style}
 
 const styles = StyleSheet.create({
   gradient: {
-    height: 56,
-    borderRadius: 18,
-    paddingHorizontal: spacing.xxl,
+    height: 58,
+    borderRadius: 22,
+    width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
   },
   text: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '700' as const,
-    letterSpacing: 0.3,
+    fontWeight: '600' as const,
+    letterSpacing: 0.2,
   },
   pressed: {
     opacity: 0.92,

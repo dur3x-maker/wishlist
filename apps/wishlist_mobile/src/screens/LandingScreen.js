@@ -12,7 +12,7 @@ export default function LandingScreen({navigation}) {
             Wishlist
           </Text>
           <Text style={styles.heroSubtitle}>
-            Share your wishes,{'\n'}
+            Share your wishes ✨{'\n'}
             <Text style={styles.heroAccent}>surprise</Text> your friends
           </Text>
           <Text style={styles.heroBody}>
@@ -88,6 +88,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
   },
   actions: {
+    alignSelf: 'stretch',
     marginBottom: 56,
   },
   actionBtn: {

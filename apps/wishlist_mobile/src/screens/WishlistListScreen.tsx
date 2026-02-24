@@ -319,7 +319,7 @@ const styles = StyleSheet.create({
   center: {
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center',
+    alignItems: 'stretch',
     padding: spacing.xxxl,
   },
   pressed: {opacity: 0.6},
@@ -421,13 +421,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.status.error,
     marginBottom: spacing.lg,
+    textAlign: 'center',
   },
 
   /* ── Empty state ── */
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center',
+    alignItems: 'stretch',
     paddingHorizontal: spacing.xxxl,
   },
   emptyIconCircle: {
@@ -439,6 +440,7 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     justifyContent: 'center',
     alignItems: 'center',
+    alignSelf: 'center',
     marginBottom: spacing.xl,
   },
   emptyIconPlus: {

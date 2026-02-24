@@ -255,8 +255,8 @@ export default function ItemDetailScreen({route, navigation}: Props) {
 
 const styles = StyleSheet.create({
   container: {paddingBottom: 40, paddingTop: 100},
-  center: {flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xxxl},
-  errorText: {fontSize: 16, color: colors.status.error},
+  center: {flex: 1, justifyContent: 'center', alignItems: 'stretch', padding: spacing.xxxl},
+  errorText: {fontSize: 16, color: colors.status.error, textAlign: 'center'},
   image: {height: 240, backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: borderRadius.xl, marginHorizontal: spacing.lg, marginBottom: spacing.md, overflow: 'hidden'},
   header: {
     flexDirection: 'row',

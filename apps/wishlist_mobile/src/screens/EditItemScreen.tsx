@@ -200,8 +200,8 @@ export default function EditItemScreen({route, navigation}: Props) {
 const styles = StyleSheet.create({
   flex1: {flex: 1},
   container: {padding: spacing.xxl, paddingTop: 100, flexGrow: 1},
-  center: {flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xxxl},
-  errorText: {fontSize: 16, color: colors.status.error},
+  center: {flex: 1, justifyContent: 'center', alignItems: 'stretch', padding: spacing.xxxl},
+  errorText: {fontSize: 16, color: colors.status.error, textAlign: 'center'},
   label: {fontSize: 13, fontWeight: '600' as const, color: colors.text.secondary, marginBottom: spacing.xs, marginTop: spacing.lg},
   row: {flexDirection: 'row', gap: spacing.md},
   flex: {flex: 1},

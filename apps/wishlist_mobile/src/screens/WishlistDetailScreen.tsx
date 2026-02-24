@@ -435,7 +435,7 @@ export default function WishlistDetailScreen({route, navigation}: Props) {
 
 const styles = StyleSheet.create({
   list: {padding: spacing.lg, paddingTop: 100, paddingBottom: 100, flexGrow: 1},
-  center: {flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xxxl},
+  center: {flex: 1, justifyContent: 'center', alignItems: 'stretch', padding: spacing.xxxl},
   description: {
     fontSize: 14,
     color: colors.text.secondary,
@@ -532,12 +532,13 @@ const styles = StyleSheet.create({
   reserveBtnText: {color: colors.accent, fontWeight: '600' as const, fontSize: 14},
   reserveBtnTextActive: {color: colors.white},
   reserveBtnTextDisabled: {color: colors.text.tertiary},
-  errorText: {fontSize: 16, color: colors.status.error, marginBottom: spacing.lg},
+  errorText: {fontSize: 16, color: colors.status.error, marginBottom: spacing.lg, textAlign: 'center'},
   emptyCenter: {
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center',
+    alignItems: 'stretch',
     paddingVertical: spacing.huge,
+    paddingHorizontal: spacing.lg,
   },
   emptyIconCircle: {
     width: 64,
@@ -548,6 +549,7 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     justifyContent: 'center',
     alignItems: 'center',
+    alignSelf: 'center',
     marginBottom: spacing.lg,
   },
   emptyIconPlus: {
@@ -560,11 +562,13 @@ const styles = StyleSheet.create({
     fontWeight: '600' as const,
     color: colors.white,
     marginBottom: spacing.xs,
+    textAlign: 'center',
   },
   emptyHint: {
     fontSize: 14,
     color: colors.text.tertiary,
     marginBottom: spacing.xxl,
+    textAlign: 'center',
   },
   fab: {
     position: 'absolute',
