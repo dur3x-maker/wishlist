@@ -15,6 +15,7 @@ import {
 import {launchImageLibrary} from 'react-native-image-picker';
 import {useQueryClient} from '@tanstack/react-query';
 import {createItem, scrapeUrl, uploadImage} from '../api/items';
+import {colors, spacing, borderRadius} from '../theme';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import type {RootStackParamList} from '../navigation/types';
 
@@ -138,7 +139,7 @@ export default function CreateItemScreen({route, navigation}: Props) {
             onPress={handleScrape}
             disabled={scraping || !url.trim()}>
             {scraping ? (
-              <ActivityIndicator size="small" color="#6C63FF" />
+              <ActivityIndicator size="small" color={colors.primary} />
             ) : (
               <Text style={styles.scrapeBtnText}>Autofill</Text>
             )}
@@ -208,7 +209,7 @@ export default function CreateItemScreen({route, navigation}: Props) {
           onPress={handleCreate}
           disabled={loading}>
           {loading ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={colors.white} />
           ) : (
             <Text style={styles.buttonText}>Add Item</Text>
           )}
@@ -220,54 +221,55 @@ export default function CreateItemScreen({route, navigation}: Props) {
 
 const styles = StyleSheet.create({
   flex1: {flex: 1},
-  container: {padding: 24, backgroundColor: '#fff', flexGrow: 1},
-  label: {fontSize: 13, fontWeight: '600', color: '#555', marginBottom: 6, marginTop: 16},
+  container: {padding: spacing.xxl, backgroundColor: colors.white, flexGrow: 1},
+  label: {fontSize: 13, fontWeight: '600' as const, color: colors.text.secondary, marginBottom: spacing.xs, marginTop: spacing.lg},
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 10,
-    padding: 14,
+    borderColor: colors.border.light,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
     fontSize: 16,
-    backgroundColor: '#fafafa',
+    backgroundColor: colors.background.secondary,
+    color: colors.text.primary,
   },
-  urlRow: {flexDirection: 'row', gap: 8},
+  urlRow: {flexDirection: 'row', gap: spacing.sm},
   urlInput: {flex: 1},
   scrapeBtn: {
     borderWidth: 1.5,
-    borderColor: '#6C63FF',
-    borderRadius: 10,
-    paddingHorizontal: 14,
+    borderColor: colors.primary,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.md,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  scrapeBtnText: {color: '#6C63FF', fontWeight: '600', fontSize: 14},
-  row: {flexDirection: 'row', gap: 12},
+  scrapeBtnText: {color: colors.primary, fontWeight: '600' as const, fontSize: 14},
+  row: {flexDirection: 'row', gap: spacing.md},
   flex: {flex: 1},
   currencyBox: {width: 90},
-  currencyInput: {textAlign: 'center'},
-  imageRow: {flexDirection: 'row', gap: 8},
+  currencyInput: {textAlign: 'center' as const},
+  imageRow: {flexDirection: 'row', gap: spacing.sm},
   pickBtn: {
     borderWidth: 1.5,
-    borderColor: '#6C63FF',
-    borderRadius: 10,
-    paddingHorizontal: 14,
+    borderColor: colors.primary,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.md,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  pickBtnText: {color: '#6C63FF', fontWeight: '600', fontSize: 14},
+  pickBtnText: {color: colors.primary, fontWeight: '600' as const, fontSize: 14},
   imagePreview: {
     width: '100%',
     height: 160,
-    borderRadius: 10,
-    marginTop: 10,
-    backgroundColor: '#f3f4f6',
+    borderRadius: borderRadius.md,
+    marginTop: spacing.md,
+    backgroundColor: colors.background.secondary,
   },
   button: {
-    backgroundColor: '#6C63FF',
-    borderRadius: 10,
-    padding: 16,
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.md,
+    padding: spacing.lg,
     alignItems: 'center',
-    marginTop: 32,
+    marginTop: spacing.xxxl,
   },
-  buttonText: {color: '#fff', fontSize: 16, fontWeight: '600'},
+  buttonText: {color: colors.white, fontSize: 16, fontWeight: '600' as const},
 });

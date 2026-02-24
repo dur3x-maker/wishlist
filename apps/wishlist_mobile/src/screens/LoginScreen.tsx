@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import {GoogleSignin} from '@react-native-google-signin/google-signin';
 import {login, googleAuth} from '../api/auth';
+import {colors, spacing, typography, borderRadius} from '../theme';
 import type {LoginScreenProps} from '../navigation/types';
 
 GoogleSignin.configure({
@@ -141,71 +142,72 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
-    padding: 24,
-    backgroundColor: '#fff',
+    padding: spacing.xxl,
+    backgroundColor: colors.white,
   },
   title: {
     fontSize: 32,
-    fontWeight: '700',
-    marginBottom: 32,
+    fontWeight: '700' as const,
+    marginBottom: spacing.xxxl,
     textAlign: 'center',
-    color: '#1a1a1a',
+    color: colors.text.primary,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 10,
-    padding: 14,
-    marginBottom: 12,
+    borderColor: colors.border.light,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    marginBottom: spacing.md,
     fontSize: 16,
-    backgroundColor: '#fafafa',
+    backgroundColor: colors.background.secondary,
+    color: colors.text.primary,
   },
   button: {
-    backgroundColor: '#6C63FF',
-    borderRadius: 10,
-    padding: 16,
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.md,
+    padding: spacing.lg,
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: spacing.sm,
   },
   buttonText: {
-    color: '#fff',
+    color: colors.white,
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '600' as const,
   },
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 20,
+    marginVertical: spacing.xl,
   },
   dividerLine: {
     flex: 1,
     height: StyleSheet.hairlineWidth,
-    backgroundColor: '#ddd',
+    backgroundColor: colors.border.light,
   },
   dividerText: {
-    marginHorizontal: 12,
-    color: '#aaa',
+    marginHorizontal: spacing.md,
+    color: colors.text.tertiary,
     fontSize: 13,
   },
   googleButton: {
     borderWidth: 1.5,
-    borderColor: '#ddd',
-    borderRadius: 10,
-    padding: 16,
+    borderColor: colors.border.light,
+    borderRadius: borderRadius.md,
+    padding: spacing.lg,
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: colors.white,
   },
   googleButtonText: {
-    color: '#333',
+    color: colors.text.primary,
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '600' as const,
   },
   link: {
-    marginTop: 20,
+    marginTop: spacing.xl,
     alignItems: 'center',
   },
   linkText: {
-    color: '#6C63FF',
+    color: colors.primary,
     fontSize: 14,
   },
 });

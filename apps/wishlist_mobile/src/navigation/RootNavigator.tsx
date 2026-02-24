@@ -7,6 +7,7 @@ import ItemDetailScreen from '../screens/ItemDetailScreen';
 import CreateWishlistScreen from '../screens/CreateWishlistScreen';
 import CreateItemScreen from '../screens/CreateItemScreen';
 import EditItemScreen from '../screens/EditItemScreen';
+import LandingScreen from '../screens/LandingScreen';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 
@@ -21,7 +22,8 @@ interface Props {
 export default function RootNavigator({isAuthenticated, onLogin, onLogout}: Props) {
   if (!isAuthenticated) {
     return (
-      <Stack.Navigator>
+      <Stack.Navigator initialRouteName="Landing">
+        <Stack.Screen name="Landing" component={LandingScreen} options={{headerShown: false}} />
         <Stack.Screen name="Login" options={{headerShown: false}}>
           {(props) => <LoginScreen {...props} onLogin={onLogin} />}
         </Stack.Screen>

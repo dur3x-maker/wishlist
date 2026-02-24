@@ -11,12 +11,14 @@ import {
   Modal,
   Share,
   Image,
+  Animated,
 } from 'react-native';
 import {useFocusEffect} from '@react-navigation/native';
 import {useWishlistDetail} from '../hooks/useWishlistDetail';
 import {useReserve} from '../hooks/useReserve';
 import {useAuthContext} from '../hooks/AuthContext';
 import {WEB_BASE_URL} from '../api/client';
+import {colors, spacing, typography, shadows, borderRadius} from '../theme';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import type {RootStackParamList} from '../navigation/types';
 import type {Item} from '../types';
@@ -25,13 +27,16 @@ import {resolveImageUrl} from '../utils/imageUrl';
 type Props = NativeStackScreenProps<RootStackParamList, 'WishlistDetail'>;
 
 const STATUS_COLORS: Record<string, string> = {
-  active: '#22c55e',
-  funded: '#6C63FF',
+  active: colors.status.success,
+  funded: colors.primary,
   expired: '#f59e0b',
 };
-const DEFAULT_STATUS_COLOR = '#9ca3af';
+const DEFAULT_STATUS_COLOR = colors.text.tertiary;
 
 function ProgressBar({item}: {item: Item}) {
+  const progressAnim = React.useRef(new Animated.Value(0)).current;
+  const [hasAnimated, setHasAnimated] = React.useState(false);
+
   if (item.price_cents == null || item.price_cents <= 0) {
     return null;
   }
@@ -39,10 +44,27 @@ function ProgressBar({item}: {item: Item}) {
   const funded = (item.total_contributed / 100).toFixed(2);
   const total = (item.price_cents / 100).toFixed(2);
   const cur = item.currency || 'USD';
+
+  React.useEffect(() => {
+    if (!hasAnimated) {
+      Animated.timing(progressAnim, {
+        toValue: progress,
+        duration: 600,
+        useNativeDriver: false,
+      }).start();
+      setHasAnimated(true);
+    }
+  }, [progressAnim, progress, hasAnimated]);
+
+  const animatedWidth = progressAnim.interpolate({
+    inputRange: [0, 100],
+    outputRange: ['0%', '100%'],
+  });
+
   return (
     <View style={styles.progressSection}>
       <View style={styles.progressTrack}>
-        <View style={[styles.progressFill, {width: `${progress}%`}]} />
+        <Animated.View style={[styles.progressFill, {width: animatedWidth}]} />
       </View>
       <Text style={styles.progressLabel}>
         {cur} {funded} of {cur} {total} ({progress}%)
@@ -179,7 +201,7 @@ export default function WishlistDetailScreen({route, navigation}: Props) {
   if (isLoading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#6C63FF" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -249,7 +271,7 @@ export default function WishlistDetailScreen({route, navigation}: Props) {
               onPress={() => handleReservePress(item)}
               disabled={isReservedByOther || reserve.isPending}>
               {reserve.isPending ? (
-                <ActivityIndicator size="small" color="#6C63FF" />
+                <ActivityIndicator size="small" color={colors.primary} />
               ) : (
                 <Text
                   style={[
@@ -316,7 +338,7 @@ export default function WishlistDetailScreen({route, navigation}: Props) {
                 onPress={submitReserve}
                 disabled={reserve.isPending}>
                 {reserve.isPending ? (
-                  <ActivityIndicator color="#fff" />
+                  <ActivityIndicator color={colors.white} />
                 ) : (
                   <Text style={styles.modalConfirmText}>Confirm</Text>
                 )}
@@ -330,107 +352,104 @@ export default function WishlistDetailScreen({route, navigation}: Props) {
 }
 
 const styles = StyleSheet.create({
-  list: {padding: 16, flexGrow: 1},
-  center: {flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32},
-  description: {fontSize: 14, color: '#666', marginBottom: 16},
-  headerRight: {flexDirection: 'row', alignItems: 'center', gap: 12, marginRight: 4},
-  headerBtn: {color: '#6C63FF', fontSize: 15},
-  headerPlus: {color: '#6C63FF', fontSize: 24, lineHeight: 28},
+  list: {padding: spacing.lg, flexGrow: 1},
+  center: {flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xxxl},
+  description: {fontSize: 14, color: colors.text.secondary, marginBottom: spacing.lg},
+  headerRight: {flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginRight: spacing.xs},
+  headerBtn: {color: colors.primary, fontSize: 15},
+  headerPlus: {color: colors.primary, fontSize: 24, lineHeight: 28},
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: {width: 0, height: 2},
-    elevation: 2,
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.xl,
+    marginBottom: spacing.md,
+    ...shadows.md,
     overflow: 'hidden',
   },
-  cardImage: {width: '100%', height: 140, backgroundColor: '#f3f4f6'},
-  cardBody: {padding: 16},
+  cardImage: {width: '100%', height: 140, backgroundColor: colors.background.secondary},
+  cardBody: {padding: spacing.lg},
   cardTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 6,
+    marginBottom: spacing.xs,
   },
-  itemTitle: {fontSize: 16, fontWeight: '600', color: '#1a1a1a', flex: 1, marginRight: 8},
-  statusBadge: {borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3},
-  statusText: {fontSize: 11, fontWeight: '600', textTransform: 'uppercase'},
-  price: {fontSize: 14, color: '#555', marginBottom: 4},
-  progressSection: {marginBottom: 10},
+  itemTitle: {fontSize: 16, fontWeight: '600' as const, color: colors.text.primary, flex: 1, marginRight: spacing.sm},
+  statusBadge: {borderRadius: borderRadius.sm, paddingHorizontal: spacing.sm, paddingVertical: 3},
+  statusText: {fontSize: 11, fontWeight: '600' as const, textTransform: 'uppercase' as const},
+  price: {fontSize: 14, color: colors.text.secondary, marginBottom: spacing.xs},
+  progressSection: {marginBottom: spacing.md},
   progressTrack: {
     height: 6,
-    backgroundColor: '#e5e7eb',
-    borderRadius: 3,
+    backgroundColor: colors.border.light,
+    borderRadius: borderRadius.sm,
     overflow: 'hidden',
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
-  progressFill: {height: 6, borderRadius: 3, backgroundColor: '#6C63FF'},
-  progressLabel: {fontSize: 12, color: '#888'},
+  progressFill: {height: 6, borderRadius: borderRadius.sm, backgroundColor: colors.primary},
+  progressLabel: {fontSize: 12, color: colors.text.secondary},
   reserveBtn: {
     borderWidth: 1.5,
-    borderColor: '#6C63FF',
-    borderRadius: 8,
-    paddingVertical: 8,
+    borderColor: colors.primary,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.sm,
     alignItems: 'center',
-    marginTop: 4,
+    marginTop: spacing.xs,
   },
-  reserveBtnActive: {backgroundColor: '#6C63FF'},
-  reserveBtnDisabled: {borderColor: '#e5e7eb'},
-  reserveBtnText: {color: '#6C63FF', fontWeight: '600', fontSize: 14},
-  reserveBtnTextActive: {color: '#fff'},
-  reserveBtnTextDisabled: {color: '#9ca3af'},
-  errorText: {fontSize: 16, color: '#e53e3e', marginBottom: 12},
+  reserveBtnActive: {backgroundColor: colors.primary},
+  reserveBtnDisabled: {borderColor: colors.border.light},
+  reserveBtnText: {color: colors.primary, fontWeight: '600' as const, fontSize: 14},
+  reserveBtnTextActive: {color: colors.white},
+  reserveBtnTextDisabled: {color: colors.text.tertiary},
+  errorText: {fontSize: 16, color: colors.status.error, marginBottom: spacing.md},
   retryBtn: {
-    backgroundColor: '#6C63FF',
-    borderRadius: 8,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
   },
-  retryText: {color: '#fff', fontWeight: '600'},
-  emptyText: {fontSize: 18, color: '#555', fontWeight: '600'},
-  emptyHint: {fontSize: 14, color: '#aaa', marginTop: 6},
+  retryText: {color: colors.white, fontWeight: '600' as const},
+  emptyText: {fontSize: 18, color: colors.text.secondary, fontWeight: '600' as const},
+  emptyHint: {fontSize: 14, color: colors.text.tertiary, marginTop: spacing.xs},
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'flex-end',
   },
   modalBox: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.white,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    padding: 24,
+    padding: spacing.xxl,
     paddingBottom: 40,
   },
-  modalTitle: {fontSize: 18, fontWeight: '700', marginBottom: 16, color: '#1a1a1a'},
-  modalLabel: {fontSize: 13, color: '#666', marginBottom: 6},
+  modalTitle: {fontSize: 18, fontWeight: '700' as const, marginBottom: spacing.lg, color: colors.text.primary},
+  modalLabel: {fontSize: 13, color: colors.text.secondary, marginBottom: spacing.xs},
   modalInput: {
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 10,
-    padding: 14,
+    borderColor: colors.border.light,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
     fontSize: 16,
-    backgroundColor: '#fafafa',
-    marginBottom: 16,
+    backgroundColor: colors.background.secondary,
+    marginBottom: spacing.lg,
+    color: colors.text.primary,
   },
-  modalActions: {flexDirection: 'row', gap: 12},
+  modalActions: {flexDirection: 'row', gap: spacing.md},
   modalCancel: {
     flex: 1,
     borderWidth: 1.5,
-    borderColor: '#ddd',
-    borderRadius: 10,
-    padding: 14,
+    borderColor: colors.border.light,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
     alignItems: 'center',
   },
-  modalCancelText: {color: '#555', fontWeight: '600'},
+  modalCancelText: {color: colors.text.secondary, fontWeight: '600' as const},
   modalConfirm: {
     flex: 1,
-    backgroundColor: '#6C63FF',
-    borderRadius: 10,
-    padding: 14,
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
     alignItems: 'center',
   },
-  modalConfirmText: {color: '#fff', fontWeight: '600'},
+  modalConfirmText: {color: colors.white, fontWeight: '600' as const},
 });

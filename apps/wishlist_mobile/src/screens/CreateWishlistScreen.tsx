@@ -12,8 +12,11 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import {useQueryClient} from '@tanstack/react-query';
 import {createWishlist} from '../api/wishlists';
+import {colors, spacing, typography, borderRadius} from '../theme';
+import {formatDeadlineDate} from '../utils/countdown';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import type {RootStackParamList} from '../navigation/types';
 
@@ -24,6 +27,8 @@ export default function CreateWishlistScreen({navigation}: Props) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [isPublic, setIsPublic] = useState(true);
+  const [deadline, setDeadline] = useState<Date | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleCreate = async () => {
@@ -33,10 +38,12 @@ export default function CreateWishlistScreen({navigation}: Props) {
     }
     setLoading(true);
     try {
+      const deadlineISO = deadline ? deadline.toISOString() : null;
       await createWishlist({
         title: title.trim(),
         description: description.trim(),
         is_public: isPublic,
+        deadline: deadlineISO,
       });
       queryClient.invalidateQueries({queryKey: ['wishlists']});
       navigation.goBack();
@@ -45,6 +52,18 @@ export default function CreateWishlistScreen({navigation}: Props) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDateChange = (event: any, selectedDate?: Date) => {
+    setShowDatePicker(Platform.OS === 'ios');
+    if (selectedDate) {
+      setDeadline(selectedDate);
+    }
+  };
+
+  const getMinDate = () => {
+    const d = new Date(Date.now() + 60000);
+    return d;
   };
 
   return (
@@ -76,9 +95,38 @@ export default function CreateWishlistScreen({navigation}: Props) {
           <Switch
             value={isPublic}
             onValueChange={setIsPublic}
-            trackColor={{true: '#6C63FF'}}
+            trackColor={{true: colors.primary}}
           />
         </View>
+
+        <Text style={styles.label}>Deadline (optional)</Text>
+        <TouchableOpacity
+          style={styles.dateButton}
+          onPress={() => setShowDatePicker(true)}>
+          <Text style={deadline ? styles.dateText : styles.datePlaceholder}>
+            {deadline ? formatDeadlineDate(deadline.toISOString()) : 'Select deadline'}
+          </Text>
+        </TouchableOpacity>
+        {deadline && (
+          <TouchableOpacity
+            style={styles.clearButton}
+            onPress={() => setDeadline(null)}>
+            <Text style={styles.clearButtonText}>Clear deadline</Text>
+          </TouchableOpacity>
+        )}
+        <Text style={styles.hint}>
+          Items will expire after this date. Max 3 years from now.
+        </Text>
+
+        {showDatePicker && (
+          <DateTimePicker
+            value={deadline || getMinDate()}
+            mode="datetime"
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            onChange={handleDateChange}
+            minimumDate={getMinDate()}
+          />
+        )}
 
         <TouchableOpacity
           style={styles.button}
@@ -96,29 +144,65 @@ export default function CreateWishlistScreen({navigation}: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: {padding: 24, backgroundColor: '#fff', flexGrow: 1},
-  label: {fontSize: 13, fontWeight: '600', color: '#555', marginBottom: 6, marginTop: 16},
+  container: {padding: spacing.xxl, backgroundColor: colors.white, flexGrow: 1},
+  label: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.text.secondary,
+    marginBottom: spacing.xs,
+    marginTop: spacing.lg,
+  },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 10,
-    padding: 14,
+    borderColor: colors.border.light,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
     fontSize: 16,
-    backgroundColor: '#fafafa',
+    backgroundColor: colors.background.secondary,
+    color: colors.text.primary,
   },
   multiline: {height: 90, textAlignVertical: 'top'},
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 20,
+    marginTop: spacing.xl,
+  },
+  dateButton: {
+    borderWidth: 1,
+    borderColor: colors.border.light,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    backgroundColor: colors.background.secondary,
+  },
+  dateText: {
+    fontSize: 16,
+    color: colors.text.primary,
+  },
+  datePlaceholder: {
+    fontSize: 16,
+    color: colors.text.tertiary,
+  },
+  clearButton: {
+    marginTop: spacing.sm,
+    alignSelf: 'flex-start',
+  },
+  clearButtonText: {
+    fontSize: 13,
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  hint: {
+    fontSize: 12,
+    color: colors.text.tertiary,
+    marginTop: spacing.xs,
   },
   button: {
-    backgroundColor: '#6C63FF',
-    borderRadius: 10,
-    padding: 16,
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.md,
+    padding: spacing.lg,
     alignItems: 'center',
-    marginTop: 32,
+    marginTop: spacing.xxxl,
   },
-  buttonText: {color: '#fff', fontSize: 16, fontWeight: '600'},
+  buttonText: {color: colors.white, fontSize: 16, fontWeight: '600'},
 });
