@@ -8,10 +8,10 @@ import {
   ActivityIndicator,
   Alert,
   Share,
-  Animated,
-  PanResponder,
+  TouchableOpacity,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
+import Swipeable from 'react-native-gesture-handler/Swipeable';
 import {useFocusEffect} from '@react-navigation/native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useQuery, useQueryClient} from '@tanstack/react-query';
@@ -168,6 +168,9 @@ export default function WishlistListScreen({navigation, onLogout}: Props) {
             keyExtractor={keyExtractor}
             renderItem={renderItem}
             contentContainerStyle={styles.list}
+            initialNumToRender={6}
+            windowSize={5}
+            removeClippedSubviews
             ListFooterComponent={
               (data?.length ?? 0) > 0 && (data?.length ?? 0) <= 2 ? (
                 <View style={styles.listFooter}>
@@ -192,6 +195,8 @@ export default function WishlistListScreen({navigation, onLogout}: Props) {
   );
 }
 
+/* ────────────────────── Swipeable Card ────────────────────── */
+
 const SwipeableCard = memo(function SwipeableCard({item, onPress, onDelete, onShare, refreshKey}: {
   item: WishlistListItem;
   onPress: () => void;
@@ -199,118 +204,81 @@ const SwipeableCard = memo(function SwipeableCard({item, onPress, onDelete, onSh
   onShare: () => void;
   refreshKey: number;
 }) {
-  const translateX = useRef(new Animated.Value(0)).current;
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const [swiping, setSwiping] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const swipeableRef = useRef<Swipeable>(null);
 
-  useEffect(() => {
-    // Force swipe position to zero on mount
-    translateX.setValue(0);
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 500,
-      useNativeDriver: true,
-    }).start(() => {
-      // Only show delete background after card is fully opaque
-      setMounted(true);
-    });
-  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
+  const closeSwipe = useCallback(() => {
+    swipeableRef.current?.close();
+  }, []);
 
-  const panResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        return Math.abs(gestureState.dx) > 10;
-      },
-      onPanResponderGrant: () => {
-        setSwiping(true);
-      },
-      onPanResponderMove: (_, gestureState) => {
-        if (gestureState.dx < 0) {
-          translateX.setValue(Math.max(gestureState.dx, -100));
-        }
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        setSwiping(false);
-        if (gestureState.dx < -60) {
-          Animated.timing(translateX, {
-            toValue: -100,
-            duration: 200,
-            useNativeDriver: true,
-          }).start();
-        } else {
-          Animated.spring(translateX, {
-            toValue: 0,
-            useNativeDriver: true,
-          }).start();
-        }
-      },
-    }),
-  ).current;
+  const handleDelete = useCallback(() => {
+    closeSwipe();
+    onDelete();
+  }, [closeSwipe, onDelete]);
+
+  const handleShare = useCallback(() => {
+    closeSwipe();
+    onShare();
+  }, [closeSwipe, onShare]);
+
+  const renderRightActions = useCallback(() => (
+    <View style={styles.actionsContainer}>
+      <TouchableOpacity
+        style={styles.shareAction}
+        onPress={handleShare}
+        activeOpacity={0.7}>
+        <Text style={styles.actionText}>Share</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.deleteAction}
+        onPress={handleDelete}
+        activeOpacity={0.7}>
+        <Text style={styles.actionText}>Delete</Text>
+      </TouchableOpacity>
+    </View>
+  ), [handleDelete, handleShare]);
 
   const countdown = getFullCountdown(item.deadline);
   const expired = isExpired(item.deadline);
 
   return (
-    <View style={styles.swipeContainer}>
-      {mounted && (
-        <View style={styles.deleteBackground}>
-          <Pressable
-            android_ripple={null}
-            style={styles.deleteButton}
-            onPress={() => {
-              Animated.spring(translateX, {
-                toValue: 0,
-                useNativeDriver: true,
-              }).start();
-              onDelete();
-            }}>
-            <Text style={styles.deleteText}>Delete</Text>
-          </Pressable>
-        </View>
-      )}
-      <Animated.View
-        style={[styles.cardWrapper, {transform: [{translateX}], opacity: fadeAnim}]}
-        {...panResponder.panHandlers}>
+    <View style={styles.swipeWrapper}>
+      <Swipeable
+        ref={swipeableRef}
+        renderRightActions={renderRightActions}
+        overshootRight={false}
+        friction={2}>
         <Pressable
           android_ripple={null}
-          style={({pressed}) => [styles.card, pressed && !swiping && styles.pressedCard]}
-          onPress={onPress}
-          disabled={swiping}>
-          <View style={styles.cardContent}>
-            <Text style={styles.cardTitle}>{item.title}</Text>
-            {item.description ? (
-              <Text style={styles.cardDesc} numberOfLines={2}>
-                {item.description}
-              </Text>
-            ) : null}
-            {item.deadline && !expired && (
-              <View style={styles.deadlinePill}>
-                <Text style={styles.deadlineBadge}>⏳ {countdown}</Text>
-              </View>
-            )}
-            {item.deadline && expired && (
-              <View style={styles.expiredPill}>
-                <Text style={styles.deadlineExpired}>Expired</Text>
-              </View>
-            )}
-            <View style={styles.metaRow}>
-              <Text style={styles.cardMeta}>
-                {item.item_count} item{item.item_count !== 1 ? 's' : ''}
-              </Text>
-              <Pressable
-                android_ripple={null}
-                onPress={onShare}
-                style={({pressed}) => pressed && styles.pressed}>
-                <Text style={styles.shareText}>Share</Text>
-              </Pressable>
+          style={({pressed}) => [styles.card, pressed && styles.pressedCard]}
+          onPress={onPress}>
+          <Text style={styles.cardTitle}>{item.title}</Text>
+          {item.description ? (
+            <Text style={styles.cardDesc} numberOfLines={2}>
+              {item.description}
+            </Text>
+          ) : null}
+          {item.deadline && !expired && (
+            <View style={styles.deadlinePill}>
+              <Text style={styles.deadlineBadge}>⏳ {countdown}</Text>
             </View>
+          )}
+          {item.deadline && expired && (
+            <View style={styles.expiredPill}>
+              <Text style={styles.deadlineExpired}>Expired</Text>
+            </View>
+          )}
+          <View style={styles.metaRow}>
+            <Text style={styles.cardMeta}>
+              {item.item_count} item{item.item_count !== 1 ? 's' : ''}
+            </Text>
           </View>
         </Pressable>
-      </Animated.View>
+      </Swipeable>
     </View>
   );
 });
+
+/* ────────────────────── Styles ────────────────────── */
 
 const styles = StyleSheet.create({
   header: {
@@ -345,7 +313,7 @@ const styles = StyleSheet.create({
   },
   list: {
     padding: spacing.lg,
-    paddingBottom: 100,
+    paddingBottom: 120,
     flexGrow: 1,
   },
   center: {
@@ -355,46 +323,48 @@ const styles = StyleSheet.create({
     padding: spacing.xxxl,
   },
   pressed: {opacity: 0.6},
-  swipeContainer: {
+
+  /* ── Swipeable ── */
+  swipeWrapper: {
     marginBottom: spacing.md,
-    position: 'relative',
   },
-  deleteBackground: {
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    bottom: 0,
-    width: 100,
-    backgroundColor: colors.status.error,
-    borderRadius: borderRadius.xl,
+  actionsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: '100%',
+  },
+  deleteAction: {
+    width: 85,
+    height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#EF4444',
+    borderTopRightRadius: borderRadius.xl,
+    borderBottomRightRadius: borderRadius.xl,
   },
-  deleteButton: {
-    padding: spacing.lg,
+  shareAction: {
+    width: 85,
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.primary,
   },
-  deleteText: {
-    color: colors.white,
+  actionText: {
+    color: '#FFFFFF',
     fontWeight: '600' as const,
     fontSize: 14,
   },
-  cardWrapper: {
-    backgroundColor: 'transparent',
-  },
+
+  /* ── Card ── */
   card: {
-    backgroundColor: colors.glass.bg,
+    backgroundColor: 'rgba(255,255,255,0.05)',
     borderWidth: 1,
-    borderColor: colors.glass.border,
-    borderRadius: borderRadius.xxl,
+    borderColor: 'rgba(255,255,255,0.08)',
+    borderRadius: borderRadius.xl,
     padding: spacing.xl,
-    ...shadows.md,
   },
   pressedCard: {
-    opacity: 0.88,
-    transform: [{scale: 0.97}],
-  },
-  cardContent: {
-    flex: 1,
+    opacity: 0.85,
   },
   cardTitle: {
     fontSize: 18,
@@ -447,16 +417,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.text.tertiary,
   },
-  shareText: {
-    fontSize: 14,
-    fontWeight: '600' as const,
-    color: colors.accent,
-  },
   errorText: {
     fontSize: 16,
     color: colors.status.error,
     marginBottom: spacing.lg,
   },
+
+  /* ── Empty state ── */
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -493,10 +460,12 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xxxl,
     lineHeight: 24,
   },
+
+  /* ── FAB ── */
   fab: {
     position: 'absolute',
     right: spacing.xl,
-    bottom: spacing.xxxl,
+    bottom: 32,
   },
   fabGradient: {
     width: 60,
@@ -512,7 +481,7 @@ const styles = StyleSheet.create({
   },
   fabText: {
     fontSize: 28,
-    color: colors.white,
+    color: '#FFFFFF',
     lineHeight: 30,
   },
   listFooter: {

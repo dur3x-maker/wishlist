@@ -7,11 +7,11 @@ export const colors = {
   white: '#FFFFFF',
   black: '#000000',
 
-  // Gradient stops for background
+  // Gradient stops for background (warm purple)
   gradient: {
-    start: '#0E0824',
-    mid: '#170E3C',
-    end: '#24145E',
+    start: '#140A2E',
+    mid: '#24114D',
+    end: '#2E1A5F',
   },
 
   // Glass surface
@@ -30,9 +30,9 @@ export const colors = {
   },
 
   background: {
-    primary: '#0E0824',
-    secondary: '#170E3C',
-    tertiary: '#24145E',
+    primary: '#140A2E',
+    secondary: '#24114D',
+    tertiary: '#2E1A5F',
   },
 
   border: {

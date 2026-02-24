@@ -1,7 +1,7 @@
 import React from 'react';
 import {Pressable, Text, StyleSheet, ActivityIndicator, ViewStyle} from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import {colors, borderRadius, shadows, spacing} from '../theme';
+import {colors, spacing} from '../theme';
 
 interface Props {
   title: string;
@@ -17,14 +17,14 @@ export default function PrimaryButton({title, onPress, loading, disabled, style}
       android_ripple={null}
       onPress={onPress}
       disabled={disabled || loading}
-      style={({pressed}) => [pressed && styles.pressed, style]}>
+      style={({pressed}) => [style, pressed && styles.pressed]}>
       <LinearGradient
         colors={[colors.primary, colors.primaryLight]}
         start={{x: 0, y: 0}}
         end={{x: 1, y: 0}}
         style={styles.gradient}>
         {loading ? (
-          <ActivityIndicator color={colors.white} />
+          <ActivityIndicator color="#FFFFFF" />
         ) : (
           <Text style={styles.text}>{title}</Text>
         )}
@@ -35,21 +35,20 @@ export default function PrimaryButton({title, onPress, loading, disabled, style}
 
 const styles = StyleSheet.create({
   gradient: {
+    height: 56,
     borderRadius: 18,
-    paddingVertical: 16,
     paddingHorizontal: spacing.xxl,
     alignItems: 'center',
     justifyContent: 'center',
-    ...shadows.glow,
   },
   text: {
-    color: colors.white,
+    color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '700' as const,
     letterSpacing: 0.3,
   },
   pressed: {
-    opacity: 0.88,
-    transform: [{scale: 0.97}],
+    opacity: 0.92,
+    transform: [{scale: 0.98}],
   },
 });
